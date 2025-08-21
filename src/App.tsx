@@ -11,10 +11,14 @@ function isTokenValid(t?: string | null) {
   return Math.floor(Date.now() / 1000) < exp
 }
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+type RequireAuthProps = {
+  children: React.ReactNode
+}
+
+function RequireAuth({ children }: RequireAuthProps) {
   const ok = isTokenValid(getToken())
   if (!ok) return <Navigate to="/" replace />
-  return children
+  return <>{children}</>
 }
 
 export default function App() {

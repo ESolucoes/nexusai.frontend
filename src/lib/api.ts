@@ -51,7 +51,7 @@ function isExpired(token?: string | null) {
 }
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || "/api",
+  baseURL: import.meta.env.VITE_API_BASE || "",
   timeout: 20000,
   headers: { Accept: "application/json", "Content-Type": "application/json" },
 })

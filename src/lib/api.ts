@@ -50,8 +50,12 @@ function isExpired(token?: string | null) {
   return Math.floor(Date.now() / 1000) >= exp
 }
 
+const baseURL =
+  import.meta.env.VITE_API_BASE?.replace(/\/+$/, "") ||
+  "https://api.processosniper.com.br"
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || "",
+  baseURL,
   timeout: 20000,
   headers: { Accept: "application/json", "Content-Type": "application/json" },
 })

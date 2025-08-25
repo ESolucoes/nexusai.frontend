@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import Header from "../../components/layout/Header"
+import { useNavigate } from "react-router-dom"
+import MentoradoHeader from "../../components/layout/MentoradoHeader"
 import "../../styles/agentes/agentes.css"
-import { api } from "../../lib/api"
+import { api, getToken, decodeJwt, clearToken } from "../../lib/api"
 
 type Msg = { id: string; role: "user" | "assistant"; content: string; createdAt?: string }
 type Sessao = { id: string; createdAt: string; lastMessageAt: string; lastSnippet: string; totalMessages: number }
@@ -14,7 +15,16 @@ const ASSISTANTS = [
   { key: "CALEIDOSCOPIO_CONTEUDO", label: "Caleidoscópio" },
 ]
 
+function buildBearer(): string | null {
+  const raw = getToken()
+  if (!raw) return null
+  const hasPrefix = /^Bearer\s+/i.test(raw)
+  return hasPrefix ? raw : `Bearer ${raw}`
+}
+
 export default function AgentesPage() {
+  const navigate = useNavigate()
+
   const [assistantKey, setAssistantKey] = useState<string>(ASSISTANTS[0].key)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Msg[]>([])
@@ -23,6 +33,7 @@ export default function AgentesPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [sessions, setSessions] = useState<Sessao[]>([])
   const [files, setFiles] = useState<File[]>([])
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const listRef = useRef<HTMLDivElement | null>(null)
   const taRef = useRef<HTMLTextAreaElement | null>(null)
@@ -33,6 +44,25 @@ export default function AgentesPage() {
     document.body.classList.add("no-scroll")
     return () => document.body.classList.remove("no-scroll")
   }, [])
+
+  // Garantir token válido e setar Authorization default (normalizado)
+  useEffect(() => {
+    const bearer = buildBearer()
+    if (!bearer) {
+      clearToken()
+      navigate("/")
+      return
+    }
+    const t = (bearer || "").replace(/^Bearer\s+/i, "")
+    const payload = decodeJwt<any>(t)
+    const exp = payload?.exp
+    if (exp && Math.floor(Date.now() / 1000) >= exp) {
+      clearToken()
+      navigate("/")
+      return
+    }
+    api.defaults.headers.common["Authorization"] = bearer
+  }, [navigate])
 
   // troca de agente = limpa estado local
   useEffect(() => {
@@ -55,23 +85,35 @@ export default function AgentesPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [showHistory])
 
-  // abrir modal + carregar sessões
   const openHistory = async () => {
+    const bearer = buildBearer()
+    if (!bearer) return
     try {
-      const { data } = await api.get<{ sessions: Sessao[] }>(`/agentes/sessions`, { params: { assistantKey } })
+      const { data } = await api.get<{ sessions: Sessao[] }>(`/agentes/sessions`, {
+        params: { assistantKey },
+        headers: { Authorization: bearer },
+      })
       setSessions(data.sessions || [])
-    } catch {
-      setSessions([])
+    } catch (e: any) {
+      const status = e?.response?.status
+      if (status === 401 || status === 403) {
+        setAuthError("Sessão expirada. Faça login novamente.")
+      } else {
+        setSessions([])
+      }
     } finally {
       setShowHistory(true)
     }
   }
 
-  // reabrir sessão ao clicar
   const reopenSession = async (id: string) => {
+    const bearer = buildBearer()
+    if (!bearer) return
     setLoading(true)
     try {
-      const { data } = await api.get<{ sessionId: string; messages: Msg[] }>(`/agentes/session/${id}`)
+      const { data } = await api.get<{ sessionId: string; messages: Msg[] }>(`/agentes/session/${id}`, {
+        headers: { Authorization: bearer },
+      })
       setSessionId(data.sessionId)
       setMessages(data.messages || [])
       setShowHistory(false)
@@ -80,8 +122,13 @@ export default function AgentesPage() {
         if (el) el.scrollTop = el.scrollHeight
       }, 0)
     } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Não foi possível abrir a sessão.'
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: String(msg) }])
+      const status = e?.response?.status
+      if (status === 401 || status === 403) {
+        setAuthError("Sessão expirada. Faça login novamente.")
+      } else {
+        const msg = e?.response?.data?.message || "Não foi possível abrir a sessão."
+        setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: String(msg) }])
+      }
     } finally {
       setLoading(false)
     }
@@ -110,6 +157,12 @@ export default function AgentesPage() {
     const text = input.trim()
     if ((text === "" && files.length === 0) || loading) return
 
+    const bearer = buildBearer()
+    if (!bearer) {
+      setAuthError("Sessão expirada. Faça login novamente.")
+      return
+    }
+
     const tmpId = crypto.randomUUID()
     if (text) setMessages(prev => [...prev, { id: tmpId, role: "user", content: text }])
     setInput("")
@@ -126,15 +179,27 @@ export default function AgentesPage() {
       const { data } = await api.post<{ sessionId: string; reply: Msg }>(
         `/agentes/messages`,
         form,
-        { headers: { "Content-Type": "multipart/form-data" }, transformRequest: [(d) => d] }
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: bearer, // <- normalizado
+          },
+          transformRequest: [(d) => d],
+        }
       )
 
       if (!sessionId) setSessionId(data.sessionId)
       setMessages(prev => [...prev, data.reply])
       setFiles([])
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Falha ao enviar. Tente novamente."
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: String(msg) }])
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        // NÃO redireciona; só avisa.
+        setAuthError("Sessão expirada. Faça login novamente.")
+      } else {
+        const msg = err?.response?.data?.message || "Falha ao enviar. Tente novamente."
+        setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: String(msg) }])
+      }
     } finally {
       setLoading(false)
     }
@@ -148,7 +213,7 @@ export default function AgentesPage() {
 
   return (
     <div className="agentes-page">
-      <Header />
+      <MentoradoHeader />
 
       <div className="chat-toolbar">
         <div className="chat-toolbar-inner">
@@ -231,6 +296,7 @@ export default function AgentesPage() {
           </div>
         )}
         <p className="composer-hint">Enter envia • Shift+Enter quebra linha</p>
+        {authError && <p className="msg-error" style={{ marginTop: 8 }}>{authError}</p>}
       </div>
 
       {showHistory && (

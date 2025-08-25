@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom"
 import "../../styles/layout/header.css"
 
-export default function Header() {
+export default function MentoradoHeader() {
   const { pathname } = useLocation()
 
-  const isDashboardActive = pathname.startsWith("/dashboard/mentores")
-  const isAgentesActive = pathname.startsWith("/mentores/agentes")
+  const isHomeActive = pathname.startsWith("/home/mentorado")
+  const isAgentesActive = pathname.startsWith("/home/mentorados/agentes")
 
   return (
     <aside className="app-sidebar">
@@ -15,11 +15,11 @@ export default function Header() {
       </div>
 
       <nav className="app-sidebar-nav">
-        <Link className={isDashboardActive ? "active" : ""} to="/dashboard/mentores">
-          Dashboard
+        <Link className={isHomeActive ? "active" : ""} to="/home/mentorado">
+          Home
         </Link>
 
-        <Link className={isAgentesActive ? "active" : ""} to="/mentores/agentes">
+        <Link className={isAgentesActive ? "active" : ""} to="/home/mentorados/agentes">
           Agentes
         </Link>
       </nav>

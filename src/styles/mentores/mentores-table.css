@@ -293,3 +293,17 @@ body.dark-mode .mentores-table tbody td { color: #e5e7eb; }
   color: var(--azul-header);
   border-bottom: 3px solid var(--azul-header);
 }
+
+.mentores-table thead th.avatar-col,
+.mentores-table td.avatar-cell {
+  width: 52px;
+  min-width: 52px;
+}
+
+.mentor-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  object-fit: cover;
+  display: block;
+}

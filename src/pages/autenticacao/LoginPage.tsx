@@ -6,6 +6,21 @@ import "../../styles/autenticacao/login.css"
 
 type LoginResponse = { access_token?: string; token?: string; jwt?: string }
 
+function pickUserIdFromJwt(jwt?: string | null): string | null {
+  const p = decodeJwt<any>(jwt)
+  const candidates = [
+    p?.sub,
+    p?.id,
+    p?.userId,
+    p?.uid,
+    p?.usuarioId,
+    p?.user_id,
+    typeof p?.user === "object" ? p.user?.id : undefined,
+  ]
+  const found = candidates.find((v) => typeof v === "string" && v.trim().length > 0)
+  return found ? String(found) : null
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState("")
@@ -27,6 +42,36 @@ export default function LoginPage() {
     }
   }, [])
 
+  async function descobrirPerfil(usuarioId: string) {
+    // 1) tenta diretamente no /usuarios/{id}
+    try {
+      const { data } = await api.get<any>(`/usuarios/${usuarioId}`)
+      const ehMentor = Boolean(data?.mentor?.tipo || data?.mentor?.id)
+      const ehMentorado = Boolean(data?.mentorado?.id || data?.mentorado)
+      if (ehMentor) return "mentor"
+      if (ehMentorado) return "mentorado"
+    } catch {}
+    // 2) fallback: lista de mentores
+    try {
+      const { data: mentores } = await api.get<any>(`/usuarios/mentores`)
+      const ehMentorLista = Array.isArray(mentores)
+        ? mentores.some((m: any) => m?.usuarioId === usuarioId || m?.id === usuarioId)
+        : Array.isArray(mentores?.items) &&
+          mentores.items.some((m: any) => m?.usuarioId === usuarioId || m?.id === usuarioId)
+      if (ehMentorLista) return "mentor"
+    } catch {}
+    // 3) fallback: lista de mentorados
+    try {
+      const { data: mentorados } = await api.get<any>(`/usuarios/mentorados`)
+      const ehMentoradoLista = Array.isArray(mentorados)
+        ? mentorados.some((m: any) => m?.usuarioId === usuarioId || m?.id === usuarioId)
+        : Array.isArray(mentorados?.items) &&
+          mentorados.items.some((m: any) => m?.usuarioId === usuarioId || m?.id === usuarioId)
+      if (ehMentoradoLista) return "mentorado"
+    } catch {}
+    return "desconhecido"
+  }
+
   const loginMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`${api.defaults.baseURL}/autenticacao/login`, {
@@ -39,12 +84,14 @@ export default function LoginPage() {
         throw new Error(tx || `HTTP ${res.status}`)
       }
 
+      // tenta Authorization header primeiro
       const headerAuth = res.headers.get("authorization") || res.headers.get("Authorization")
       if (headerAuth) {
-        setToken(headerAuth)
+        setToken(headerAuth) // salva normalizado (sem "Bearer ")
         return { access_token: headerAuth.replace(/^Bearer\s+/i, "") }
       }
 
+      // fallback: corpo JSON
       const data = (await res.clone().json().catch(() => ({}))) as LoginResponse
       const token = data.access_token || data.token || data.jwt
       if (!token) throw new Error("Token não retornado pelo servidor.")
@@ -54,22 +101,21 @@ export default function LoginPage() {
     onSuccess: async (payload) => {
       setErro(null)
       try {
-        const dec = decodeJwt<any>(payload.access_token!)
-        const usuarioId: string =
-          dec?.sub || dec?.id || dec?.userId || dec?.uid || dec?.usuarioId
+        const usuarioId = pickUserIdFromJwt(payload.access_token!)
         if (!usuarioId) throw new Error("Token sem ID de usuário.")
-
-        const { data: lista } = await api.get(`/mentores?usuarioId=${usuarioId}`)
-        const ehMentor = Array.isArray(lista) ? lista.length > 0 : Boolean(lista?.items?.length)
-        if (!ehMentor) {
-          setErro("Apenas usuários mentores podem acessar o dashboard.")
-          clearToken()
+        const perfil = await descobrirPerfil(usuarioId)
+        if (perfil === "mentor") {
+          navigate("/dashboard/mentores")
           return
         }
-
-        navigate("/dashboard/mentores")
+        if (perfil === "mentorado") {
+          navigate("/home/mentorado")
+          return
+        }
+        setErro("Perfil não autorizado para acesso.")
+        clearToken()
       } catch (e: any) {
-        setErro(e?.message || "Erro ao validar perfil de mentor.")
+        setErro(e?.message || "Erro ao validar perfil.")
         clearToken()
       }
     },

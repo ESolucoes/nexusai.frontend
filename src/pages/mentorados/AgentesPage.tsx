@@ -22,6 +22,15 @@ function buildBearer(): string | null {
   return hasPrefix ? raw : `Bearer ${raw}`
 }
 
+/** helper para exibir tamanho legível */
+function prettyBytes(n: number) {
+  if (!Number.isFinite(n)) return "-"
+  const units = ["B","KB","MB","GB"]
+  let i = 0; let v = n
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++ }
+  return `${Math.round(v * 10) / 10} ${units[i]}`
+}
+
 export default function AgentesPage() {
   const navigate = useNavigate()
 
@@ -155,7 +164,8 @@ export default function AgentesPage() {
 
   const send = async () => {
     const text = input.trim()
-    if ((text === "" && files.length === 0) || loading) return
+    const hasFiles = files.length > 0
+    if ((text === "" && !hasFiles) || loading) return
 
     const bearer = buildBearer()
     if (!bearer) {
@@ -163,12 +173,25 @@ export default function AgentesPage() {
       return
     }
 
+    // 1) Mensagem do usuário (texto)
     const tmpId = crypto.randomUUID()
     if (text) setMessages(prev => [...prev, { id: tmpId, role: "user", content: text }])
+
+    // 2) Mensagem do usuário (confirmação de anexos)
+    if (hasFiles) {
+      const list = files.map(f => `• ${f.name} (${prettyBytes(f.size)})`).join("\n")
+      const attachMsg: Msg = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: `Anexos enviados:\n${list}`
+      }
+      setMessages(prev => [...prev, attachMsg])
+    }
+
     setInput("")
     resizeTA()
-
     setLoading(true)
+
     try {
       const form = new FormData()
       form.append("assistantKey", assistantKey)
@@ -182,7 +205,7 @@ export default function AgentesPage() {
         {
           headers: {
             "Content-Type": "multipart/form-data",
-            Authorization: bearer, // <- normalizado
+            Authorization: bearer,
           },
           transformRequest: [(d) => d],
         }
@@ -194,7 +217,6 @@ export default function AgentesPage() {
     } catch (err: any) {
       const status = err?.response?.status
       if (status === 401 || status === 403) {
-        // NÃO redireciona; só avisa.
         setAuthError("Sessão expirada. Faça login novamente.")
       } else {
         const msg = err?.response?.data?.message || "Falha ao enviar. Tente novamente."
@@ -262,7 +284,7 @@ export default function AgentesPage() {
             id="mensagem"
             name="mensagem"
             className="composer-input"
-            placeholder="Pergunte qualquer coisa ou anexe uma imagem"
+            placeholder="Pergunte qualquer coisa ou anexe arquivos"
             value={input}
             onChange={(e) => { setInput(e.target.value); resizeTA() }}
             onKeyDown={onKeyDown}
@@ -273,7 +295,8 @@ export default function AgentesPage() {
             id="anexos"
             name="anexos"
             type="file"
-            accept="image/*"
+            // agora aceita documentos também
+            accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.csv,.xls,.xlsx,.ppt,.pptx,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
             multiple
             style={{ display: "none" }}
             onChange={onPickFiles}

@@ -14,6 +14,15 @@ const ASSISTANTS = [
   { key: "CALEIDOSCOPIO_CONTEUDO", label: "Caleidoscópio" },
 ]
 
+// helper bonitinho pro tamanho de arquivo
+function prettyBytes(n: number) {
+  if (!Number.isFinite(n)) return "-"
+  const units = ["B", "KB", "MB", "GB"]
+  let v = n, i = 0
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++ }
+  return `${Math.round(v * 10) / 10} ${units[i]}`
+}
+
 export default function AgentesPage() {
   const [assistantKey, setAssistantKey] = useState<string>(ASSISTANTS[0].key)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -80,8 +89,8 @@ export default function AgentesPage() {
         if (el) el.scrollTop = el.scrollHeight
       }, 0)
     } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Não foi possível abrir a sessão.'
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: String(msg) }])
+      const msg = e?.response?.data?.message || "Não foi possível abrir a sessão."
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: String(msg) }])
     } finally {
       setLoading(false)
     }
@@ -108,14 +117,23 @@ export default function AgentesPage() {
 
   const send = async () => {
     const text = input.trim()
-    if ((text === "" && files.length === 0) || loading) return
+    const hasFiles = files.length > 0
+    if (!hasFiles && text === "") return
+    if (loading) return
 
-    const tmpId = crypto.randomUUID()
-    if (text) setMessages(prev => [...prev, { id: tmpId, role: "user", content: text }])
+    // confirmação local do que foi enviado (texto + anexos)
+    let confirm = text
+    if (hasFiles) {
+      const list = files.map(f => `• ${f.name} (${prettyBytes(f.size)})`).join("\n")
+      confirm += (confirm ? "\n\n" : "") + `Anexos enviados:\n${list}`
+    }
+    setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "user", content: confirm || "(sem texto)" }])
+
+    // limpa UI e envia pro backend
     setInput("")
     resizeTA()
-
     setLoading(true)
+
     try {
       const form = new FormData()
       form.append("assistantKey", assistantKey)
@@ -155,7 +173,12 @@ export default function AgentesPage() {
           <div className="agent-actions-left">
             <div className="agent-select">
               <label htmlFor="assistantKey">Agente</label>
-              <select id="assistantKey" name="assistantKey" value={assistantKey} onChange={(e) => setAssistantKey(e.target.value)}>
+              <select
+                id="assistantKey"
+                name="assistantKey"
+                value={assistantKey}
+                onChange={(e) => setAssistantKey(e.target.value)}
+              >
                 {ASSISTANTS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
               </select>
             </div>
@@ -175,11 +198,13 @@ export default function AgentesPage() {
               <div className="msg-bubble"><pre className="msg-text">Em que posso ajudar?</pre></div>
             </div>
           )}
+
           {messages.map(m => (
             <div key={m.id} className={`msg-row ${m.role}`}>
               <div className="msg-bubble"><pre className="msg-text">{m.content}</pre></div>
             </div>
           ))}
+
           {loading && (
             <div className="msg-row assistant">
               <div className="msg-bubble">
@@ -197,29 +222,37 @@ export default function AgentesPage() {
             id="mensagem"
             name="mensagem"
             className="composer-input"
-            placeholder="Pergunte qualquer coisa ou anexe uma imagem"
+            placeholder="Pergunte qualquer coisa ou anexe arquivos"
             value={input}
             onChange={(e) => { setInput(e.target.value); resizeTA() }}
             onKeyDown={onKeyDown}
             rows={1}
           />
+
           <input
             ref={fileInputRef}
             id="anexos"
             name="anexos"
             type="file"
-            accept="image/*"
+            // aceita docs comuns + imagens
+            accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.csv,.xls,.xlsx,.ppt,.pptx,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
             multiple
             style={{ display: "none" }}
             onChange={onPickFiles}
           />
+
           <button className="btn-secondary" onClick={triggerPick} disabled={loading}>
             Anexar
           </button>
-          <button className="composer-send" onClick={send} disabled={loading || (input.trim()==="" && files.length===0)}>
+          <button
+            className="composer-send"
+            onClick={send}
+            disabled={loading || (input.trim() === "" && files.length === 0)}
+          >
             Enviar
           </button>
         </div>
+
         {files.length > 0 && (
           <div className="files-row">
             {files.map((f, i) => (
@@ -230,6 +263,7 @@ export default function AgentesPage() {
             ))}
           </div>
         )}
+
         <p className="composer-hint">Enter envia • Shift+Enter quebra linha</p>
       </div>
 

@@ -1,150 +1,185 @@
-body.no-scroll { overflow: hidden; }
-:root { --sidebar-w: 260px; }
+/* ======= styles/mentorados/home.css (substituir tudo) ======= */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
 
-.mentorados-home {
-  height: 100vh;
-  width: 100vw;
-  box-sizing: border-box;
-  padding-left: var(--sidebar-w);
-  background: #ffffff;
-  overflow: hidden;
-  position: relative;
+:root{
+  --azul: #0d6efd;
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --text: #0f172a;
+  --text-dim: #334155;
+  --sidebar-w: 260px;
+  --radius: 12px;
 }
 
-.mentorados-cards { position: relative; width: 100%; height: 100%; }
+*{ box-sizing: border-box; }
+body, .mentorados-home{ font-family: 'Open Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans'; }
+body.no-scroll{ overflow: hidden; }
 
-.mentorados-card {
-  position: absolute;
-  top: 80px;
-  left: calc(var(--sidebar-w) - 200px);
-  margin-left: 20px;
-  background: #007bff;
+/* container */
+.mentorados-home{
+  min-height: 100vh;
+  width: 100vw;
+  padding-left: var(--sidebar-w);
+  background: #fff;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* grid de cards (sem position absolute) */
+.mentorados-cards{
+  position: relative;
+  z-index: 2;
+  padding: 24px 20px 0 20px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(12, 1fr);
+}
+
+/* Quebras responsivas */
+@media (max-width: 1200px){ .mentorados-cards{ grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 960px){  .mentorados-cards{ grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 720px){  .mentorados-cards{ grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px){  .mentorados-cards{ grid-template-columns: 1fr; } }
+
+/* Card do usuário */
+.mentorados-card{
+  grid-column: span 4;
+  min-height: 110px;
+  background: #0d6efd;
   color: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
   padding: 16px 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  max-width: none;
-  z-index: 5;
   display: flex;
   align-items: center;
   gap: 16px;
-  width: 360px;
-  height: 120px;
+}
+@media (max-width: 1440px){ .mentorados-card{ grid-column: span 6; } }
+@media (max-width: 960px){  .mentorados-card{ grid-column: span 4; } }
+@media (max-width: 720px){  .mentorados-card{ grid-column: span 2; } }
+@media (max-width: 520px){  .mentorados-card{ grid-column: span 1; } }
+
+.mentorados-avatar{
+  width: 62px; height: 62px; border-radius: 50%; object-fit: cover; border: 3px solid #fff;
+}
+.mentorados-user-info{ flex: 1; min-width: 0; }
+.mentorados-user-info h2{
+  margin: 0; font-size: 18px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mentorados-user-info p{
+  margin: 4px 0 0; font-size: 14px; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.mentorados-card--cv {
-  left: calc(var(--sidebar-w) + 200px);
-  background: #1e293b;
-  width: 420px;
-  height: 120px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
+.mentorados-badge{
+  color: #fff; font-weight: 800; font-size: 12px; padding: 6px 10px; border-radius: 999px; white-space: nowrap;
 }
+.badge--executive{ background: #2e7d32; }
+.badge--firstclass{ background: #a4825c; }
+.hidden{ display: none; }
 
-.mentorados-avatar {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #fff;
-  flex-shrink: 0;
-  cursor: pointer;
-}
+/* ===== Card do CURRÍCULO como KPI (igual aos cards de contagem) ===== */
+.mentorados-card--cv{
+  grid-column: span 3;
+  min-height: 110px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.10);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 
-.mentorados-user-info { flex: 1; min-width: 0; }
-.mentorados-user-info h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.mentorados-user-info p {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  opacity: 0.9;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mentorados-badge {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 20px;
-  white-space: nowrap;
-  align-self: flex-start;
-  margin-top: 4px;
-  background: #a4825c;
-}
-.badge--executive { background: #ff8c00; }
-.badge--firstclass { background: #000000; }
-.hidden { display: none; }
-
-.mentorados-center-image {
-  position: fixed;
-  z-index: 1;
-  top: 50%;
-  left: calc(50% + (var(--sidebar-w) / 2));
-  transform: translate(-50%, -50%);
-  height: auto;
-  object-fit: contain;
-  pointer-events: none;
-  user-select: none;
-  width: clamp(420px, 48vw, 900px);
-  max-height: 86vh;
-}
-
-.mentorados-cv-info h3 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-}
-.cv-file {
-  margin: 0;
-  font-size: 14px;
-  color: #e2e8f0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  color: var(--text);
 }
-.cv-file--empty { opacity: 0.8; }
+@media (max-width: 1440px){ .mentorados-card--cv{ grid-column: span 3; } }
+@media (max-width: 960px){  .mentorados-card--cv{ grid-column: span 2; } }
+@media (max-width: 720px){  .mentorados-card--cv{ grid-column: span 2; } }
+@media (max-width: 520px){  .mentorados-card--cv{ grid-column: span 1; } }
 
-.cv-download {
-  font-size: 13px;
-  text-decoration: underline;
-  color: #93c5fd;
+.mentorados-cv-info{
+  display: flex; flex-direction: column; gap: 6px;
 }
+.mentorados-cv-info h3{
+  margin: 0; font-size: 16px; font-weight: 900; color: var(--text);
+  letter-spacing: .2px;
+}
+.cv-file{
+  margin: 0; font-size: 13px; font-weight: 700; color: var(--text-dim);
+}
+.cv-file--empty{ opacity: .9; }
+.cv-download{
+  margin-left: 10px; font-size: 12px; font-weight: 800; text-decoration: none;
+  padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,.1);
+  background: rgba(255,255,255,.9); color: var(--azul);
+}
+.cv-download:hover{ background: #fff; }
 
-.cv-upload-btn {
-  background: #0ea5e9;
+.cv-upload-btn{
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--azul);
+  background: var(--azul);
   color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 12px;
+  font-weight: 800;
+  padding: 0 14px;
   cursor: pointer;
-  font-weight: 600;
+  transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+  white-space: nowrap;
 }
-.cv-upload-btn:hover { filter: brightness(0.95); }
-.cv-upload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.cv-upload-btn:hover{
+  background: #a4825c;
+  border-color: #a4825c;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+.cv-upload-btn:disabled{
+  opacity: .6; cursor: not-allowed;
+}
 
-@media (min-width: 1280px) { .mentorados-center-image { width: clamp(560px, 42vw, 1100px); } }
-@media (min-width: 1440px) { .mentorados-center-image { width: clamp(600px, 38vw, 1200px); } }
-@media (min-width: 1600px) { .mentorados-center-image { width: clamp(640px, 34vw, 1300px); } }
-@media (min-width: 1920px) { .mentorados-center-image { width: clamp(720px, 30vw, 1440px); } }
-@media (min-width: 2560px) { .mentorados-center-image { width: clamp(860px, 26vw, 1680px); } }
-@media (min-width: 3440px) { .mentorados-center-image { width: clamp(1024px, 22vw, 1920px); } }
+/* imagem de fundo (logo) – decorativa, atrás */
+.mentorados-center-image{
+  position: fixed;
+  z-index: 1;
+  top: 55%;
+  left: calc(50% + (var(--sidebar-w) / 2));
+  transform: translate(-50%, -50%);
+  height: auto; width: clamp(480px, 40vw, 1200px);
+  opacity: .16;
+  pointer-events: none; user-select: none;
+}
 
-body.dark-mode .mentorados-home { background: #121212; }
-body.dark-mode .mentorados-card { box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
-body.dark-mode .mentorados-center-image { filter: brightness(0.85); }
+/* Dark mode */
+body.dark-mode .mentorados-home{ background: #121212; }
+body.dark-mode .mentorados-card--cv{
+  background: rgba(18, 18, 18, 0.35);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #f5f7fb;
+}
+body.dark-mode .mentorados-cv-info h3{ color: #f5f7fb; }
+body.dark-mode .cv-file{ color: #d1d5db; }
+
+/* ===== quando já existe currículo ===== */
+.mentorados-card--cv.has-file {
+  justify-content: flex-start;
+  align-items: stretch;
+  padding-block: 18px;
+}
+
+.mentorados-cv-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mentorados-card--cv.has-file .cv-upload-btn {
+  align-self: flex-start; /* gruda à esquerda sob o nome/baixar */
+}
+
+/* responsivo: manter tudo bonito */
+@media (max-width: 520px) {
+  .mentorados-card--cv.has-file .cv-upload-btn {
+    width: 100%;
+  }
+}

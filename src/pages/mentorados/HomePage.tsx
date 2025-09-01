@@ -1,32 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import MentoradoHeader from "../../components/layout/MentoradoHeader"
 import "../../styles/mentorados/home.css"
-import { api, getToken, uploadCurriculo, decodeJwt } from "../../lib/api"
-
-type UsuarioResponse = {
-  id: string
-  nome: string
-  email: string
-  telefone?: string | null
-  avatarUrl?: string | null
-  criadoEm?: string
-  atualizadoEm?: string
-  vigenciaAtiva?: { id: string; inicio: string; fim: string | null } | null
-  mentor?: { tipo: "admin" | "normal" } | null
-  mentorado?: {
-    id?: string
-    tipo?: "Executive" | "First Class"
-    rg?: string
-    cpf?: string
-    curriculo?: {
-      storageKey: string
-      filename: string
-      mime: string
-      tamanho: number
-      url?: string | null
-    } | null
-  } | null
-}
+import { api, getToken, uploadCurriculo, decodeJwt, getUsuarioById } from "../../lib/api"
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt)
@@ -69,21 +44,14 @@ export default function HomePage() {
     const controller = new AbortController()
     ;(async () => {
       const jwt = getToken()
-      if (!jwt) {
-        setUsuario((prev) => ({ ...prev, nome: "Usuário", email: "" }))
-        return
-      }
-
       const userId = pickUserIdFromJwt(jwt)
-      if (!userId) {
-        setUsuario((prev) => ({ ...prev, nome: "Usuário", email: "" }))
+      if (!jwt || !userId) {
+        setUsuario((p) => ({ ...p, nome: "Usuário", email: "" }))
         return
       }
 
       try {
-        const { data } = await api.get<UsuarioResponse>(`/usuarios/${userId}`, {
-          signal: controller.signal as any,
-        })
+        const data = await getUsuarioById(userId)
         setUsuario({
           id: data.id,
           nome: data.nome ?? "Usuário",
@@ -95,7 +63,11 @@ export default function HomePage() {
           curriculoNome: data.mentorado?.curriculo?.filename ?? null,
         })
       } catch (err: any) {
-        console.error("[HomePage] GET /usuarios/{id} falhou:", err?.response?.status, err?.response?.data || err?.message)
+        console.error(
+          "[HomePage] GET /usuarios/{id} falhou:",
+          err?.response?.status,
+          err?.response?.data || err?.message,
+        )
         setUsuario((prev) => ({
           ...prev,
           nome: "Usuário",
@@ -122,18 +94,27 @@ export default function HomePage() {
     const formData = new FormData()
     formData.append("file", file)
     try {
-      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      })
+      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData)
       if (data?.url) setUsuario((prev) => ({ ...prev, avatarUrl: data.url }))
     } catch (err) {
-      console.error("[HomePage] upload avatar falhou:", err)
+      console.error("[HomePage] upload avatar falhou:", (err as any)?.response?.data ?? (err as any)?.message)
     }
+  }
+
+  function handleCvClick() {
+    cvInputRef.current?.click()
   }
 
   async function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !usuario.mentoradoId) return
+    if (!file) return
+
+    if (!usuario.mentoradoId) {
+      alert("Finalize o cadastro de mentorado antes de enviar o currículo.")
+      e.currentTarget.value = ""
+      return
+    }
+
     try {
       const res = await uploadCurriculo(usuario.mentoradoId, file)
       setUsuario((prev) => ({
@@ -142,7 +123,10 @@ export default function HomePage() {
         curriculoNome: res.filename ?? file.name,
       }))
     } catch (err) {
-      console.error("[HomePage] upload currículo falhou:", err)
+      console.error("[HomePage] upload currículo falhou:", (err as any)?.response?.data ?? (err as any)?.message)
+      alert("Falha no upload do currículo.")
+    } finally {
+      e.currentTarget.value = "" // permite reenviar o mesmo arquivo
     }
   }
 
@@ -152,6 +136,8 @@ export default function HomePage() {
       : usuario.accountType === "First Class"
       ? "mentorados-badge badge--firstclass"
       : "mentorados-badge hidden"
+
+  const hasCv = Boolean(usuario.curriculoNome)
 
   return (
     <div className="mentorados-home">
@@ -185,25 +171,46 @@ export default function HomePage() {
           <span className={badgeClass}>{usuario.accountType ?? ""}</span>
         </div>
 
-        <div className="mentorados-card mentorados-card--cv">
-          <div className="mentorados-cv-info">
-            <h3>Currículo</h3>
-            {usuario.curriculoNome ? (
-              <p className="cv-file">
-                {usuario.curriculoNome}
-                {usuario.curriculoUrl ? (
-                  <a href={usuario.curriculoUrl} target="_blank" rel="noreferrer" className="cv-download">
-                    Baixar
-                  </a>
-                ) : null}
-              </p>
-            ) : (
-              <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>
-            )}
-          </div>
-          <button className="cv-upload-btn" onClick={() => cvInputRef.current?.click()} disabled={!usuario.mentoradoId}>
-            Enviar Currículo (PDF/DOC/DOCX)
-          </button>
+        {/* ===== Card do currículo ===== */}
+        <div className={`mentorados-card mentorados-card--cv${hasCv ? " has-file" : ""}`}>
+          {hasCv ? (
+            // QUANDO JÁ TEM CURRÍCULO: botão fica embaixo do nome/baixar
+            <div className="mentorados-cv-col">
+              <div className="mentorados-cv-info">
+                <h3>Currículo</h3>
+                <p className="cv-file">
+                  {usuario.curriculoNome}
+                  {usuario.curriculoUrl ? (
+                    <a
+                      href={usuario.curriculoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="cv-download"
+                    >
+                      Baixar
+                    </a>
+                  ) : null}
+                </p>
+              </div>
+
+              <button className="cv-upload-btn" onClick={handleCvClick}>
+                Enviar novo Currículo (PDF/DOC/DOCX)
+              </button>
+            </div>
+          ) : (
+            // QUANDO NÃO TEM CURRÍCULO: mantém layout atual (botão à direita)
+            <>
+              <div className="mentorados-cv-info">
+                <h3>Currículo</h3>
+                <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>
+              </div>
+
+              <button className="cv-upload-btn" onClick={handleCvClick}>
+                Enviar Currículo (PDF/DOC/DOCX)
+              </button>
+            </>
+          )}
+
           <input
             type="file"
             ref={cvInputRef}

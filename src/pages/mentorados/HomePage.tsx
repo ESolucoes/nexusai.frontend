@@ -9,9 +9,9 @@ import {
   getUsuarioById,
   listMentoradoAudios,
   uploadMentoradoAudio,
-  downloadCurriculo,
   downloadMentoradoAudio,
   fetchAudioBlob,
+  downloadCurriculo,
 } from "../../lib/api"
 import type { MentoradoAudio } from "../../lib/api"
 
@@ -45,16 +45,16 @@ function AudioRecorderModal(props: {
       (async () => {
         try {
           const temp = await navigator.mediaDevices.getUserMedia({ audio: true })
-          temp.getTracks().forEach(t => t.stop())
+          temp.getTracks().forEach((t) => t.stop())
           const devs = await navigator.mediaDevices.enumerateDevices()
-          const inputs = devs.filter(d => d.kind === "audioinput")
+          const inputs = devs.filter((d) => d.kind === "audioinput")
           setMics(inputs)
           if (!selectedMic && inputs[0]) setSelectedMic(inputs[0].deviceId)
           navigator.mediaDevices.ondevicechange = async () => {
             const ds = await navigator.mediaDevices.enumerateDevices()
-            const ins = ds.filter(d => d.kind === "audioinput")
+            const ins = ds.filter((d) => d.kind === "audioinput")
             setMics(ins)
-            if (ins.length && !ins.find(d => d.deviceId === selectedMic)) {
+            if (ins.length && !ins.find((d) => d.deviceId === selectedMic)) {
               setSelectedMic(ins[0].deviceId)
             }
           }
@@ -77,7 +77,7 @@ function AudioRecorderModal(props: {
   async function start() {
     if (!navigator?.mediaDevices?.getUserMedia) return alert("Gravação não suportada neste navegador.")
     const constraints: MediaStreamConstraints =
-      selectedMic ? { audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints } : { audio: true }
+      selectedMic ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints }) : { audio: true }
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
     mediaStreamRef.current = stream
     const rec = new MediaRecorder(stream, { mimeType: "audio/webm" })
@@ -207,6 +207,7 @@ export default function HomePage() {
           avatarUrl: data.avatarUrl ?? null,
           accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
           mentoradoId,
+          // pode vir vazio se nunca enviou currículo; após upload, o estado é atualizado
           curriculoUrl: data.mentorado?.curriculo?.url ?? null,
           curriculoNome: data.mentorado?.curriculo?.filename ?? null,
         })
@@ -250,12 +251,10 @@ export default function HomePage() {
       }
     })()
     return () => { if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audios, usuario.mentoradoId])
 
   const avatarFallback = "/images/avatar.png"
-  const avatarSrc =
-    usuario.avatarUrl && usuario.avatarUrl.trim().length > 0 ? usuario.avatarUrl : avatarFallback
+  const avatarSrc = usuario.avatarUrl && usuario.avatarUrl.trim().length > 0 ? usuario.avatarUrl : avatarFallback
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!usuario.id) return
@@ -297,13 +296,9 @@ export default function HomePage() {
   }
 
   async function handleCvDownload() {
-    if (!usuario.mentoradoId || !usuario.curriculoNome) return
+    if (!usuario.mentoradoId) return
     try {
-      await downloadCurriculo(
-        usuario.mentoradoId,
-        usuario.curriculoNome,
-        usuario.curriculoUrl ?? null,
-      )
+      await downloadCurriculo(usuario.mentoradoId)
     } catch (err: any) {
       console.error("[HomePage] download currículo falhou:", err?.response?.data ?? err?.message)
       alert("Falha ao baixar o currículo.")

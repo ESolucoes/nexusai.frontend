@@ -1,4 +1,3 @@
-// frontend/vite.config.ts
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -12,13 +11,15 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       open: true,
       proxy: {
-        // Front chama /api/... ; Vite repassa para o backend sem /api
-        '/api': {
-          target,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/api/, ''),
-        },
+        '/autenticacao': { target, changeOrigin: true, secure: false },
+        '/usuarios':     { target, changeOrigin: true, secure: false },
+        '/vigencias':    { target, changeOrigin: true, secure: false },
+        '/mentores':     { target, changeOrigin: true, secure: false },
+        '/mentorados':   { target, changeOrigin: true, secure: false },
+        '/agentes':      { target, changeOrigin: true, secure: false },
+        '/arquivos':     { target, changeOrigin: true, secure: false },
+        '/docs':         { target, changeOrigin: true, secure: false },
+        '/uploads':      { target, changeOrigin: true, secure: false },
       },
     },
   }

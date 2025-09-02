@@ -23,6 +23,11 @@ export default function Header() {
           Agentes
         </Link>
       </nav>
+
+      {/* Rodapé fixo: Encerrar Seção */}
+      <div className="app-sidebar-footer">
+        <Link to="/" className="logout-link">Encerrar Seção</Link>
+      </div>
     </aside>
   )
 }

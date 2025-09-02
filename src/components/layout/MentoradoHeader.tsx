@@ -11,7 +11,7 @@ export default function MentoradoHeader() {
       </div>
 
       <nav className="app-sidebar-nav">
-        {/* end => ativa apenas em /home/mentorado (evita conflitar com /home/mentorados/...) */}
+        {/* ativa só em /home/mentorado */}
         <NavLink
           to="/home/mentorado"
           end
@@ -28,6 +28,13 @@ export default function MentoradoHeader() {
           Agentes
         </NavLink>
       </nav>
+
+      {/* rodapé fixo */}
+      <div className="app-sidebar-footer">
+        <NavLink to="/" className="logout-link">
+          Encerrar Seção
+        </NavLink>
+      </div>
     </aside>
   )
 }

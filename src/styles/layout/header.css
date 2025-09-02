@@ -1,28 +1,36 @@
+/* ===== Sidebar (substituir tudo) ===== */
 :root {
   --sidebar-w: 260px;
   --sidebar-bg: #1e1e1e;
-  --link: #ffffff;      /* cor única para todos */
+
+  --link: #ffffff;         /* cor única p/ links */
   --link-active: #ffffff;
   --link-hover: #a4825c;
+
   --divider: rgba(255, 255, 255, 0.08);
   --brown: #a4825c;
+
+  --hover-bg: rgba(255,255,255,0.06);
+  --active-bg: rgba(255,255,255,0.10);
+  --footer-bg: rgba(255,255,255,0.04);
+  --footer-br: rgba(255,255,255,0.12);
 }
 
 .app-sidebar {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0 auto 0 0;
   width: var(--sidebar-w);
   height: 100vh;
   background: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
-  align-items: stretch;
   padding: 20px 16px;
   box-sizing: border-box;
   z-index: 1000;
   overflow: hidden;
-  font-family: "Open Sans", sans-serif;
+  font-family: "Open Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app-sidebar-logo {
@@ -52,14 +60,18 @@
   user-select: none;
 }
 
+/* Navegação ocupa o espaço e rola se necessário */
 .app-sidebar-nav {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 6px 4px;
   margin-top: 16px;
+  overflow-y: auto;
 }
 
+/* Links e rótulos */
 .app-sidebar-nav a,
 .app-sidebar-nav .nav-label {
   display: block;
@@ -69,26 +81,66 @@
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  font-family: "Open Sans", sans-serif;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: color .2s ease, background .2s ease, transform .03s ease;
 }
 
-.app-sidebar-nav a:hover {
+/* Rótulo não clicável (se usar .nav-label para seções) */
+.app-sidebar-nav .nav-label {
+  cursor: default;
+  pointer-events: none;
+  opacity: .95;
+}
+
+/* Estados de interação */
+.app-sidebar-nav a:hover { color: var(--link-hover); background: var(--hover-bg); }
+.app-sidebar-nav a:active { transform: scale(0.99); }
+.app-sidebar-nav a.active { color: var(--link-active); background: var(--active-bg); }
+
+/* Acessibilidade */
+.app-sidebar-nav a:focus-visible {
+  outline: 2px solid var(--link-hover);
+  outline-offset: 2px;
+  background: var(--hover-bg);
+}
+
+/* Rodapé fixo (Encerrar Seção) */
+.app-sidebar-footer {
+  margin-top: auto;
+  padding: 12px 4px 0;
+  border-top: 1px solid var(--divider);
+}
+.app-sidebar-footer .logout-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--footer-bg);
+  border: 1px solid var(--footer-br);
+  color: var(--link);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .2s ease, color .2s ease, transform .03s ease;
+}
+.app-sidebar-footer .logout-link:hover {
+  background: var(--active-bg);
   color: var(--link-hover);
-  background: rgba(255, 255, 255, 0.06);
+}
+.app-sidebar-footer .logout-link:active { transform: scale(0.99); }
+.app-sidebar-footer .logout-link:focus-visible {
+  outline: 2px solid var(--link-hover);
+  outline-offset: 2px;
 }
 
-.app-sidebar-nav a.active {
-  color: var(--link-active);
-  background: rgba(255, 255, 255, 0.1);
-}
-
+/* Dark mode (opcional via classe no body) */
 body.dark-mode .app-sidebar {
   --sidebar-bg: #0f0f10;
   --link: #ffffff;
   --link-active: #ffffff;
   --link-hover: #d0a578;
-  --divider: rgba(255, 255, 255, 0.06);
+  --divider: rgba(255,255,255,.06);
+  --hover-bg: rgba(255,255,255,.06);
+  --active-bg: rgba(255,255,255,.12);
+  --footer-bg: rgba(255,255,255,.04);
+  --footer-br: rgba(255,255,255,.12);
 }

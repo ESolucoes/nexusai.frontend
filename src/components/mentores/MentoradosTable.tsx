@@ -1,4 +1,6 @@
+// frontend/src/components/mentores/MentoradosTable.tsx
 import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import { api } from "../../lib/api"
 import "../../styles/mentores/mentores-table.css"
@@ -68,6 +70,8 @@ export default function MentoradosTable({
   showMentorColumn,
   enableVigenciaSwitch,
 }: MentoradosTableProps) {
+  const navigate = useNavigate()
+
   const [busca, setBusca] = useState("")
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(20)
@@ -250,7 +254,12 @@ export default function MentoradosTable({
               const mentorNome = mentorInfo?.nome
               const mentorEmail = mentorInfo?.email
               return (
-                <tr key={m.id}>
+                <tr
+                  key={m.id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/mentores/home/mentorado?id=${encodeURIComponent(m.id)}`)}
+                  title="Abrir página do mentorado"
+                >
                   <td>
                     <img src="/images/avatar.png" alt={m.nome} className="mentor-avatar" draggable={false} />
                   </td>
@@ -262,7 +271,7 @@ export default function MentoradosTable({
                   </td>
                   <td>{m.email}</td>
                   {showMentorColumn && (
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <img
                           src={mentorAvatar}
@@ -281,7 +290,7 @@ export default function MentoradosTable({
                   <td>{m.telefone ?? "-"}</td>
                   <td>{m.rg}</td>
                   <td>{m.cpf}</td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     {enableVigenciaSwitch ? (
                       <label className={`switch ${rowLoading[m.id] ? "switch--loading" : ""}`}>
                         <input
@@ -289,6 +298,7 @@ export default function MentoradosTable({
                           checked={!!vigenciaOn[m.id]}
                           onChange={(e) => toggleVigencia(m.id, e.target.checked)}
                           disabled={!!rowLoading[m.id]}
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <span className="slider" />
                       </label>

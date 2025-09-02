@@ -1,12 +1,8 @@
-import { Link, useLocation } from "react-router-dom"
+// frontend/src/components/layout/MentoradoHeader.tsx
+import { NavLink } from "react-router-dom"
 import "../../styles/layout/header.css"
 
 export default function MentoradoHeader() {
-  const { pathname } = useLocation()
-
-  const isHomeActive = pathname.startsWith("/home/mentorado")
-  const isAgentesActive = pathname.startsWith("/home/mentorados/agentes")
-
   return (
     <aside className="app-sidebar">
       <div className="app-sidebar-logo">
@@ -15,13 +11,22 @@ export default function MentoradoHeader() {
       </div>
 
       <nav className="app-sidebar-nav">
-        <Link className={isHomeActive ? "active" : ""} to="/home/mentorado">
+        {/* end => ativa apenas em /home/mentorado (evita conflitar com /home/mentorados/...) */}
+        <NavLink
+          to="/home/mentorado"
+          end
+          className={({ isActive }) => (isActive ? "active" : "")}
+        >
           Home
-        </Link>
+        </NavLink>
 
-        <Link className={isAgentesActive ? "active" : ""} to="/home/mentorados/agentes">
+        {/* ativa em /home/mentorados/agentes e subrotas */}
+        <NavLink
+          to="/home/mentorados/agentes"
+          className={({ isActive }) => (isActive ? "active" : "")}
+        >
           Agentes
-        </Link>
+        </NavLink>
       </nav>
     </aside>
   )

@@ -19,7 +19,9 @@ export function setToken(token: string | null) {
 }
 
 export function clearToken() {
-  try { localStorage.removeItem(TOKEN_KEY) } catch {}
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+  } catch {}
 }
 
 export function getToken(): string | null {
@@ -53,11 +55,12 @@ function isExpired(jwt?: string | null) {
 }
 
 /* ============================ URL helpers ============================ */
-const RAW_URL  = import.meta.env.VITE_API_URL ?? ""
+const RAW_URL = import.meta.env.VITE_API_URL ?? ""
 const RAW_BASE = import.meta.env.VITE_API_BASE ?? ""
-const API_URL  = RAW_URL.trim().replace(/\/+$/, "")
+const API_URL = RAW_URL.trim().replace(/\/+$/, "")
 const API_BASE = RAW_BASE.trim().replace(/^\/+|\/+$/g, "")
-const ORIGIN = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"
+const ORIGIN =
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"
 
 export const baseURL = (() => {
   const root = API_URL || ORIGIN.replace(/\/+$/, "")
@@ -70,7 +73,9 @@ function joinUrl(root: string, path: string) {
   const p = path.replace(/^\/+/, "")
   return `${r}/${p}`.replace(/\/{2,}/g, "/").replace(":/", "://")
 }
-export function apiUrl(p: string) { return joinUrl(baseURL, p) }
+export function apiUrl(p: string) {
+  return joinUrl(baseURL, p)
+}
 
 /* ============================ Axios ============================ */
 export const api = axios.create({
@@ -96,7 +101,10 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
-api.interceptors.response.use((res) => res, (err) => Promise.reject(err))
+api.interceptors.response.use(
+  (res) => res,
+  (err) => Promise.reject(err),
+)
 
 /* ============================ Helpers HTTP ============================ */
 export function postForm<T = any>(url: string, form: FormData) {
@@ -126,17 +134,19 @@ function pickFilenameFromHeaders(hdrs: any, fallback: string) {
   return fallback
 }
 
-/* ============================ Domain helpers ============================ */
+/* ============================ Domain helpers: Usuários/Mentorado ============================ */
 export type UsuarioResponse = {
   id: string
   nome: string
   email: string
   avatarUrl?: string | null
-  mentorado?: {
-    id?: string
-    tipo?: "Executive" | "First Class"
-    curriculo?: { url?: string | null; filename?: string | null } | null
-  } | null
+  mentorado?:
+    | {
+        id?: string
+        tipo?: "Executive" | "First Class"
+        curriculo?: { url?: string | null; filename?: string | null } | null
+      }
+    | null
 }
 
 export type MentoradoResponse = {
@@ -153,7 +163,9 @@ export async function getUsuarioById(id: string) {
 }
 
 export async function getMentoradoByUsuarioId(usuarioId: string) {
-  const { data } = await api.get<MentoradoResponse>(`/mentorados/por-usuario/${usuarioId}`)
+  const { data } = await api.get<MentoradoResponse>(
+    `/mentorados/por-usuario/${usuarioId}`,
+  )
   return data
 }
 
@@ -223,11 +235,16 @@ export type MentoradoAudio = {
   savedAt: string
 }
 
-export async function uploadMentoradoAudio(mentoradoId: string, blob: Blob | File) {
+export async function uploadMentoradoAudio(
+  mentoradoId: string,
+  blob: Blob | File,
+) {
   const form = new FormData()
   const name =
     (blob as File)?.name ||
-    `audio-${Date.now()}.${(blob.type?.split("/")[1] || "webm").replace(/[^a-z0-9]/gi, "") || "webm"}`
+    `audio-${Date.now()}.${
+      (blob.type?.split("/")[1] || "webm").replace(/[^a-z0-9]/gi, "") || "webm"
+    }`
   form.append("audio", blob, name)
   const { data } = await postForm<{ ok: boolean; audio: MentoradoAudio }>(
     `/mentorados/${mentoradoId}/audios`,
@@ -237,20 +254,30 @@ export async function uploadMentoradoAudio(mentoradoId: string, blob: Blob | Fil
 }
 
 export async function listMentoradoAudios(mentoradoId: string) {
-  const { data } = await api.get<{ ok: boolean; total: number; audios: MentoradoAudio[] }>(
-    `/mentorados/${mentoradoId}/audios`,
-  )
+  const { data } = await api.get<{
+    ok: boolean
+    total: number
+    audios: MentoradoAudio[]
+  }>(`/mentorados/${mentoradoId}/audios`)
   return data
 }
 
-export async function fetchAudioBlob(mentoradoId: string, audio: MentoradoAudio) {
-  const url = apiUrl(`/mentorados/${mentoradoId}/audios/${encodeURIComponent(audio.filename)}`)
+export async function fetchAudioBlob(
+  mentoradoId: string,
+  audio: MentoradoAudio,
+) {
+  const url = apiUrl(
+    `/mentorados/${mentoradoId}/audios/${encodeURIComponent(audio.filename)}`,
+  )
   const { data, headers } = await api.get(url, { responseType: "blob" })
   const name = pickFilenameFromHeaders(headers, audio.filename || "audio.webm")
   return { blob: data as Blob, filename: name }
 }
 
-export async function downloadMentoradoAudio(mentoradoId: string, audio: MentoradoAudio) {
+export async function downloadMentoradoAudio(
+  mentoradoId: string,
+  audio: MentoradoAudio,
+) {
   const { blob, filename } = await fetchAudioBlob(mentoradoId, audio)
   triggerBrowserDownload(blob, filename)
 }
@@ -268,14 +295,15 @@ export type VagaLink = {
 }
 
 export async function listVagaLinks(pagina = 1, quantidade = 10) {
-  const { data } = await api.get<{ itens: VagaLink[]; total: number; pagina: number; quantidade: number }>(
-    `/vagas-links`,
-    { params: { pagina, quantidade } }
-  )
+  const { data } = await api.get<{
+    itens: VagaLink[]
+    total: number
+    pagina: number
+    quantidade: number
+  }>(`/vagas-links`, { params: { pagina, quantidade } })
   return data
 }
 
-/** Payload para criar link de vaga: somente url é obrigatória */
 export type CreateVagaLinkPayload = {
   url: string
   titulo?: string
@@ -286,5 +314,132 @@ export type CreateVagaLinkPayload = {
 
 export async function createVagaLink(payload: CreateVagaLinkPayload) {
   const { data } = await api.post<VagaLink>(`/vagas-links`, payload)
+  return data
+}
+
+/* ============================ SSI ============================ */
+export type SsiMetrica =
+  | "SSI_SETOR"
+  | "SSI_REDE"
+  | "SSI_TOTAL"
+  | "PILAR_MARCA"
+  | "PILAR_PESSOAS_CERTAS"
+  | "PILAR_INSIGHTS"
+  | "PILAR_RELACIONAMENTOS"
+  | "IMPRESSOES_PUBLICACAO"
+  | "VISUALIZACOES_PERFIL"
+  | "OCORRENCIAS_PESQUISA"
+  | "TAXA_RECRUTADORES"
+  | "CANDIDATURAS_SIMPLIFICADAS"
+  | "CANDIDATURAS_VISUALIZADAS"
+  | "CURRICULOS_BAIXADOS"
+  | "CONTATOS_RH"
+  | "PUBLICACOES_SEMANA"
+  | "INTERACOES_COMENTARIOS"
+  | "CONTRIBUICOES_ARTIGOS"
+  | "PEDIDOS_CONEXAO_HEADHUNTERS"
+  | "PEDIDOS_CONEXAO_DECISORES"
+  | "MENSAGENS_RECRUTADORES"
+  | "MENSAGENS_NETWORKING"
+  | "CAFES_AGENDADOS"
+  | "CAFES_TOMADOS"
+  | "ENTREVISTAS_REALIZADAS"
+  | "ENTREVISTAS_FASE_FINAL"
+  | "CARTAS_OFERTA"
+
+export type SsiUnidade = "NUMERO" | "PERCENTUAL"
+
+export type SsiStatus = "OTIMO" | "BOM" | "RUIM"
+
+export type SsiResultado = {
+  id: string
+  usuarioId: string | null
+  metrica: SsiMetrica
+  dataReferencia: string // 'YYYY-MM-DD'
+  valor: string // numeric string
+  unidade: SsiUnidade
+  status: SsiStatus
+  metaAplicada: string // numeric string
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export type SsiMeta = {
+  id: string
+  metrica: SsiMetrica
+  valorMeta: string // numeric string
+  unidade: SsiUnidade
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export async function listSsi(params: {
+  usuarioId?: string
+  metrica?: SsiMetrica
+  dataInicio?: string
+  dataFim?: string
+  pagina?: number
+  quantidade?: number
+}) {
+  const { data } = await api.get<{
+    total: number
+    pagina: number
+    quantidade: number
+    items: SsiResultado[]
+  }>("/ssi", { params })
+  return data
+}
+
+export async function upsertSsi(dto: {
+  usuarioId?: string
+  metrica: SsiMetrica
+  dataReferencia: string
+  valor: number
+}) {
+  const { data } = await api.put<{ sucesso: true }>("/ssi", dto)
+  return data
+}
+
+export async function postSsiBatch(dto: {
+  usuarioId?: string
+  dataReferencia: string
+  itens: { metrica: SsiMetrica; valor: number }[]
+}) {
+  const { data } = await api.post<{ sucesso: true }>("/ssi/batch", dto)
+  return data
+}
+
+export async function upsertSsiBatch(dto: {
+  usuarioId?: string
+  dataReferencia: string
+  itens: { metrica: SsiMetrica; valor: number }[]
+}) {
+  const { data } = await api.put<{ sucesso: true }>("/ssi/batch", dto)
+  return data
+}
+
+export async function listSsiMetas() {
+  const { data } = await api.get<SsiMeta[]>("/ssi/metas")
+  return data
+}
+
+export async function upsertSsiMeta(
+  dto: { metrica: SsiMetrica; valorMeta: number; unidade: SsiUnidade },
+  recalc?: boolean,
+) {
+  const { data } = await api.put<{ sucesso: true }>("/ssi/metas", dto, {
+    params: { recalcular: recalc ? "true" : "false" },
+  })
+  return data
+}
+
+export async function upsertSsiMetasBatch(
+  itens: { metrica: SsiMetrica; valorMeta: number; unidade: SsiUnidade }[],
+  recalc?: boolean,
+) {
+  const body = { itens }
+  const { data } = await api.put<{ sucesso: true }>("/ssi/metas/batch", body, {
+    params: { recalcular: recalc ? "true" : "false" },
+  })
   return data
 }

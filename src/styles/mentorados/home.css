@@ -11,6 +11,12 @@
   --radius: 12px;
 }
 
+/* BLOQUEAR SOMENTE O SCROLL HORIZONTAL (global, sem alterar tamanhos) */
+html, body { 
+  overflow-x: hidden !important; 
+  max-width: 100%;
+}
+
 *{ box-sizing: border-box; }
 body, .mentorados-home{ font-family: 'Open Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans'; }
 body.no-scroll{ overflow: hidden; }
@@ -22,7 +28,7 @@ body.no-scroll{ overflow: hidden; }
   padding-left: var(--sidebar-w);
   background: #fff;
   position: relative;
-  overflow-x: hidden;
+  overflow-x: hidden; /* reforço local */
 }
 
 /* grid de cards (sem position absolute) */
@@ -33,6 +39,7 @@ body.no-scroll{ overflow: hidden; }
   display: grid;
   gap: 20px;
   grid-template-columns: repeat(12, 1fr);
+  overflow-x: hidden; /* reforço anti-scroll horizontal */
 }
 
 /* Quebras responsivas */
@@ -77,7 +84,7 @@ body.no-scroll{ overflow: hidden; }
 .badge--firstclass{ background: #a4825c; }
 .hidden{ display: none; }
 
-/* ===== Card do CURRÍCULO como KPI (igual aos cards de contagem) ===== */
+/* ===== Card do CURRÍCULO como KPI ===== */
 .mentorados-card--cv{
   grid-column: span 3;
   min-height: 110px;
@@ -184,14 +191,13 @@ body.dark-mode .cv-file{ color: #d1d5db; }
   }
 }
 
-/* === Vagas (tabela inferior ocupando metade da largura) === */
-/* === Vagas (fixa no rodapé ocupando metade da largura) === */
+/* === Vagas (AGORA NÃO FIXA — rola junto com a página) === */
 .vagas-card {
-  position: fixed; /* fixa no viewport */
-  left: calc(var(--sidebar-w) + 25px); /* compensa a sidebar */
-  bottom: 475px;    /* distância do rodapé */
-  width: 40vw;     /* metade da tela */
-  /* segurança para não estourar em telas menores com sidebar grande */
+  position: absolute; /* fica parada no viewport */
+  left: calc(var(--sidebar-w) + -250px); /* alinhada com a sidebar */
+  top: 255px; /* <-- MAIS PARA CIMA (ajuste aqui se quiser) */
+
+  width: 40vw; /* mantém o tamanho que você já usava */
   max-width: calc(100vw - var(--sidebar-w) - 40px);
 
   background: #fff;
@@ -205,6 +211,12 @@ body.dark-mode .cv-file{ color: #d1d5db; }
   overflow: hidden;
   z-index: 10; /* acima dos cards; abaixo de modais */
 }
+
+/* Responsivo para o card de vagas em diferentes grids */
+@media (max-width: 1200px){ .vagas-card{ grid-column: span 6; } }
+@media (max-width: 960px){  .vagas-card{ grid-column: span 4; } }
+@media (max-width: 720px){  .vagas-card{ grid-column: span 2; } }
+@media (max-width: 520px){  .vagas-card{ grid-column: span 1; } }
 
 /* (mantém o restante) */
 .vagas-card__header {

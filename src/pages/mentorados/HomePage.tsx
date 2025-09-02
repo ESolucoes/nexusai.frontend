@@ -16,13 +16,17 @@ import {
 } from "../../lib/api"
 import type { MentoradoAudio } from "../../lib/api"
 
-// NOVO: tabela de vagas (links) como componente
+// Tabela de Vagas
 import VagasTable from "../../components/mentorados/VagasTable"
+// NOVO: Metas do SSI (vertical)
+import SsiMetasVertical from "../../components/mentorados/SsiMetasVertical"
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt)
   const candidates = [p?.sub, p?.id, p?.userId, p?.uid, p?.usuarioId, p?.user_id]
-  const found = candidates.find((v) => typeof v === "string" && v.trim().length > 0)
+  const found = candidates.find(
+    (v) => typeof v === "string" && v.trim().length > 0,
+  )
   return found ? String(found) : null
 }
 
@@ -46,7 +50,7 @@ function AudioRecorderModal(props: {
 
   useEffect(() => {
     if (open) {
-      (async () => {
+      ;(async () => {
         try {
           const temp = await navigator.mediaDevices.getUserMedia({ audio: true })
           temp.getTracks().forEach((t) => t.stop())
@@ -66,7 +70,9 @@ function AudioRecorderModal(props: {
       })()
     }
     return () => {
-      try { mediaRecRef.current?.stop() } catch {}
+      try {
+        mediaRecRef.current?.stop()
+      } catch {}
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
       mediaRecRef.current = null
       mediaStreamRef.current = null
@@ -79,14 +85,18 @@ function AudioRecorderModal(props: {
   }, [open])
 
   async function start() {
-    if (!navigator?.mediaDevices?.getUserMedia) return alert("Gravação não suportada neste navegador.")
-    const constraints: MediaStreamConstraints =
-      selectedMic ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints }) : { audio: true }
+    if (!navigator?.mediaDevices?.getUserMedia)
+      return alert("Gravação não suportada neste navegador.")
+    const constraints: MediaStreamConstraints = selectedMic
+      ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints })
+      : { audio: true }
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
     mediaStreamRef.current = stream
     const rec = new MediaRecorder(stream, { mimeType: "audio/webm" })
     chunksRef.current = []
-    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data)
+    }
     rec.onstop = () => {
       const b = new Blob(chunksRef.current, { type: "audio/webm" })
       setBlob(b)
@@ -97,7 +107,9 @@ function AudioRecorderModal(props: {
     setRecording(true)
   }
   function stop() {
-    try { mediaRecRef.current?.stop() } catch {}
+    try {
+      mediaRecRef.current?.stop()
+    } catch {}
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
     setRecording(false)
   }
@@ -117,40 +129,85 @@ function AudioRecorderModal(props: {
   if (!open) return null
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+      }}
       onClick={onClose}
     >
       <div
-        style={{ width: 560, background: "#fff", borderRadius: 12, padding: 18, boxShadow: "0 12px 32px rgba(0,0,0,0.2)" }}
+        style={{
+          width: 560,
+          background: "#fff",
+          borderRadius: 12,
+          padding: 18,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.2)",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ margin: 0 }}>Gravar áudio do mentorado</h3>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
           <label style={{ fontSize: 13, color: "#555", minWidth: 80 }}>Microfone:</label>
-          <select value={selectedMic} onChange={(e) => setSelectedMic(e.target.value)}
-                  style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", borderRadius: 8 }}>
-            {mics.length ? mics.map((d, i) => (
-              <option key={d.deviceId || i} value={d.deviceId}>{d.label || `Microfone ${i + 1}`}</option>
-            )) : <option value="">Permita o microfone para listar os dispositivos</option>}
+          <select
+            value={selectedMic}
+            onChange={(e) => setSelectedMic(e.target.value)}
+            style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", borderRadius: 8 }}
+          >
+            {mics.length ? (
+              mics.map((d, i) => (
+                <option key={d.deviceId || i} value={d.deviceId}>
+                  {d.label || `Microfone ${i + 1}`}
+                </option>
+              ))
+            ) : (
+              <option value="">Permita o microfone para listar os dispositivos</option>
+            )}
           </select>
         </div>
 
         <div style={{ display: "flex", gap: 10, margin: "14px 0" }}>
-          {!recording && <button onClick={start} className="cv-upload-btn">Iniciar Gravação</button>}
-          {recording && <button onClick={stop} className="cv-upload-btn">Parar</button>}
-          {blobUrl && !recording && <button onClick={save} className="cv-upload-btn">Salvar</button>}
-          <button onClick={onClose} className="cv-upload-btn">Fechar</button>
+          {!recording && (
+            <button onClick={start} className="cv-upload-btn">
+              Iniciar Gravação
+            </button>
+          )}
+          {recording && (
+            <button onClick={stop} className="cv-upload-btn">
+              Parar
+            </button>
+          )}
+          {blobUrl && !recording && (
+            <button onClick={save} className="cv-upload-btn">
+              Salvar
+            </button>
+          )}
+          <button onClick={onClose} className="cv-upload-btn">
+            Fechar
+          </button>
         </div>
 
         {blobUrl ? (
           <>
             <audio src={blobUrl} controls style={{ width: "100%" }} />
             <div style={{ marginTop: 6 }}>
-              <a href={blobUrl} download={`gravacao-${Date.now()}.webm`} className="cv-download">Baixar prévia</a>
+              <a
+                href={blobUrl}
+                download={`gravacao-${Date.now()}.webm`}
+                className="cv-download"
+              >
+                Baixar prévia
+              </a>
             </div>
           </>
-        ) : <div style={{ fontSize: 13, color: "#999" }}>Sem prévia ainda…</div>}
+        ) : (
+          <div style={{ fontSize: 13, color: "#999" }}>Sem prévia ainda…</div>
+        )}
       </div>
     </div>
   )
@@ -188,7 +245,7 @@ export default function HomePage() {
 
   useEffect(() => {
     document.body.classList.remove("login-bg")
-    document.body.classList.add("no-scroll")
+    document.body.classList.add("no-scroll") // mantém como no seu layout
     return () => document.body.classList.remove("no-scroll")
   }, [])
 
@@ -236,7 +293,7 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       if (!usuario.mentoradoId) return
       const last = audios?.[0]
       if (!last) {
@@ -253,11 +310,16 @@ export default function HomePage() {
         console.error("[HomePage] carregar áudio falhou:", e)
       }
     })()
-    return () => { if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc) }
+    return () => {
+      if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc)
+    }
   }, [audios, usuario.mentoradoId])
 
   const avatarFallback = "/images/avatar.png"
-  const avatarSrc = usuario.avatarUrl && usuario.avatarUrl.trim().length > 0 ? usuario.avatarUrl : avatarFallback
+  const avatarSrc =
+    usuario.avatarUrl && usuario.avatarUrl.trim().length > 0
+      ? usuario.avatarUrl
+      : avatarFallback
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!usuario.id) return
@@ -273,7 +335,9 @@ export default function HomePage() {
     }
   }
 
-  function handleCvClick() { cvInputRef.current?.click() }
+  function handleCvClick() {
+    cvInputRef.current?.click()
+  }
 
   async function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -303,7 +367,10 @@ export default function HomePage() {
     try {
       await downloadCurriculo(usuario.mentoradoId)
     } catch (err: any) {
-      console.error("[HomePage] download currículo falhou:", err?.response?.data ?? err?.message)
+      console.error(
+        "[HomePage] download currículo falhou:",
+        err?.response?.data ?? err?.message,
+      )
       alert("Falha ao baixar o currículo.")
     }
   }
@@ -313,7 +380,10 @@ export default function HomePage() {
     try {
       await downloadMentoradoAudio(usuario.mentoradoId, a)
     } catch (err: any) {
-      console.error("[HomePage] download áudio falhou:", err?.response?.data ?? err?.message)
+      console.error(
+        "[HomePage] download áudio falhou:",
+        err?.response?.data ?? err?.message,
+      )
       alert("Falha ao baixar o áudio.")
     }
   }
@@ -330,121 +400,195 @@ export default function HomePage() {
 
   return (
     <div className="mentorados-home">
-      <MentoradoHeader />
-      <div className="mentorados-cards">
-        {/* CARD DO USUÁRIO */}
-        <div className="mentorados-card">
-          <img
-            src={avatarSrc}
-            alt="Usuário"
-            className="mentorados-avatar"
-            draggable={false}
-            onClick={() => fileInputRef.current?.click()}
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement
-              if (img.src !== window.location.origin + avatarFallback && img.src !== avatarFallback) {
-                img.src = avatarFallback
-              }
-            }}
-          />
-          <input type="file" ref={fileInputRef} style={{ display: "none" }} accept="image/*" onChange={handleAvatarChange} />
-          <div className="mentorados-user-info">
-            <h2>{usuario.nome}</h2>
-            <p>{usuario.email}</p>
-          </div>
-          <span className={badgeClass}>{usuario.accountType ?? ""}</span>
-        </div>
+      {/* ===== Scroll SÓ VERTICAL dentro da página ===== */}
+      <div
+        className="mentorados-scroll"
+        style={{
+          height: "100vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <MentoradoHeader />
 
-        {/* CARD DO CURRÍCULO */}
-        <div className={`mentorados-card mentorados-card--cv${hasCv ? " has-file" : ""}`}>
-          {hasCv ? (
-            <div className="mentorados-cv-col">
-              <div className="mentorados-cv-info" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                <div>
-                  <h3>Currículo</h3>
-                  <p className="cv-file">
-                    {usuario.curriculoNome}
-                    <button onClick={handleCvDownload} className="cv-download" style={{ marginLeft: 8 }}>
-                      Baixar
-                    </button>
-                  </p>
+        <div className="mentorados-cards">
+          {/* CARD DO USUÁRIO */}
+          <div className="mentorados-card">
+            <img
+              src={avatarSrc}
+              alt="Usuário"
+              className="mentorados-avatar"
+              draggable={false}
+              onClick={() => fileInputRef.current?.click()}
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement
+                if (
+                  img.src !== window.location.origin + avatarFallback &&
+                  img.src !== avatarFallback
+                ) {
+                  img.src = avatarFallback
+                }
+              }}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept="image/*"
+              onChange={handleAvatarChange}
+            />
+            <div className="mentorados-user-info">
+              <h2>{usuario.nome}</h2>
+              <p>{usuario.email}</p>
+            </div>
+            <span className={badgeClass}>{usuario.accountType ?? ""}</span>
+          </div>
+
+          {/* CARD DO CURRÍCULO */}
+          <div
+            className={`mentorados-card mentorados-card--cv${
+              hasCv ? " has-file" : ""
+            }`}
+          >
+            {hasCv ? (
+              <div className="mentorados-cv-col">
+                <div
+                  className="mentorados-cv-info"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <h3>Currículo</h3>
+                    <p className="cv-file">
+                      {usuario.curriculoNome}
+                      <button
+                        onClick={handleCvDownload}
+                        className="cv-download"
+                        style={{ marginLeft: 8 }}
+                      >
+                        Baixar
+                      </button>
+                    </p>
+                  </div>
                 </div>
+                <button className="cv-upload-btn" onClick={handleCvClick}>
+                  Enviar novo Currículo (PDF/DOC/DOCX)
+                </button>
               </div>
-              <button className="cv-upload-btn" onClick={handleCvClick}>
-                Enviar novo Currículo (PDF/DOC/DOCX)
+            ) : (
+              <>
+                <div
+                  className="mentorados-cv-info"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <h3>Currículo</h3>
+                    <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>
+                  </div>
+                </div>
+                <button className="cv-upload-btn" onClick={handleCvClick}>
+                  Enviar Currículo (PDF/DOC/DOCX)
+                </button>
+              </>
+            )}
+
+            <input
+              type="file"
+              ref={cvInputRef}
+              style={{ display: "none" }}
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleCvChange}
+            />
+          </div>
+
+          {/* CARD DE ÁUDIO */}
+          <div
+            className="mentorados-card mentorados-card--audio"
+            style={{
+              position: "absolute",
+              top: 25,
+              left: "calc(var(--sidebar-w) + 725px)",
+              width: 420,
+              background: "#fff",
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            >
+              <h4 style={{ margin: 0 }}>Áudio</h4>
+              <button
+                className="cv-upload-btn"
+                onClick={() => setAudioModalOpen(true)}
+                title="Gravar áudio do mentorado"
+              >
+                Gravar Áudio
               </button>
             </div>
-          ) : (
-            <>
-              <div className="mentorados-cv-info" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 12 }}>
-                <div>
-                  <h3>Currículo</h3>
-                  <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>
-                </div>
-              </div>
-              <button className="cv-upload-btn" onClick={handleCvClick}>
-                Enviar Currículo (PDF/DOC/DOCX)
-              </button>
-            </>
-          )}
 
-          <input
-            type="file"
-            ref={cvInputRef}
-            style={{ display: "none" }}
-            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={handleCvChange}
+            <div style={{ marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>
+                Último Áudio
+              </div>
+              {ultimoAudio ? (
+                <>
+                  <audio src={ultimoAudioSrc ?? ""} controls style={{ width: "100%" }} />
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      marginTop: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 12, color: "#777" }}>
+                      {ultimoAudio.filename} • {(ultimoAudio.size / 1024).toFixed(1)} KB
+                    </span>
+                    <button
+                      onClick={() => handleAudioDownload(ultimoAudio)}
+                      className="cv-download"
+                    >
+                      Baixar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: "#999" }}>
+                  Nenhuma gravação encontrada.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* NOVO: Metas do SSI em layout VERTICAL (ocupa a linha) */}
+          <SsiMetasVertical />
+
+          {/* Tabela de Vagas (fica fixa conforme seu CSS) */}
+          <VagasTable pageSize={10} />
+
+          <img
+            src="/images/dashboard.png"
+            alt=""
+            className="mentorados-center-image"
+            draggable={false}
           />
         </div>
-
-        {/* CARD DE ÁUDIO */}
-        <div
-          className="mentorados-card mentorados-card--audio"
-          style={{
-            position: "absolute",
-            top: 25,
-            left: "calc(var(--sidebar-w) + 725px)",
-            width: 420,
-            background: "#fff",
-            borderRadius: 12,
-            padding: 16,
-            boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h4 style={{ margin: 0 }}>Áudio</h4>
-            <button className="cv-upload-btn" onClick={() => setAudioModalOpen(true)} title="Gravar áudio do mentorado">
-              Gravar Áudio
-            </button>
-          </div>
-
-          <div style={{ marginTop: 2 }}>
-            <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>Último Áudio</div>
-            {ultimoAudio ? (
-              <>
-                <audio src={ultimoAudioSrc ?? ""} controls style={{ width: "100%" }} />
-                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
-                  <span style={{ fontSize: 12, color: "#777" }}>
-                    {ultimoAudio.filename} • {(ultimoAudio.size / 1024).toFixed(1)} KB
-                  </span>
-                  <button onClick={() => handleAudioDownload(ultimoAudio)} className="cv-download">
-                    Baixar
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 13, color: "#999" }}>Nenhuma gravação encontrada.</div>
-            )}
-          </div>
-        </div>
-
-        {/* NOVO: Tabela de Vagas (links) ancorada na metade inferior (CSS em home.css) */}
-        <VagasTable pageSize={10} />
-
-        <img src="/images/dashboard.png" alt="" className="mentorados-center-image" draggable={false} />
       </div>
 
       {/* MODAL DE ÁUDIO */}

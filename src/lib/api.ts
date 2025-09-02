@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts
 import axios from "axios"
 
 /* ============================ JWT helpers ============================ */
@@ -87,7 +88,6 @@ api.interceptors.request.use((config) => {
   const isForm = typeof FormData !== "undefined" && config.data instanceof FormData
   config.headers = config.headers ?? {}
   if (isForm) {
-    // deixe o axios montar o boundary automaticamente
     delete (config.headers as any)["Content-Type"]
     config.transformRequest = [(d) => d]
   } else {
@@ -118,7 +118,6 @@ export function triggerBrowserDownload(blob: Blob, filename: string) {
 function pickFilenameFromHeaders(hdrs: any, fallback: string) {
   const cd = hdrs?.["content-disposition"] || hdrs?.["Content-Disposition"]
   if (typeof cd === "string") {
-    // suporta filename* e filename
     const star = /filename\*=(?:UTF-8''|)([^;]+)/i.exec(cd)
     if (star?.[1]) return decodeURIComponent(star[1].replace(/^"+|"+$/g, ""))
     const plain = /filename="?([^";]+)"?/i.exec(cd)
@@ -254,4 +253,38 @@ export async function fetchAudioBlob(mentoradoId: string, audio: MentoradoAudio)
 export async function downloadMentoradoAudio(mentoradoId: string, audio: MentoradoAudio) {
   const { blob, filename } = await fetchAudioBlob(mentoradoId, audio)
   triggerBrowserDownload(blob, filename)
+}
+
+/* ============================ Vagas (Links) ============================ */
+export type VagaLink = {
+  id: string
+  titulo: string
+  url: string
+  fonte?: string | null
+  descricao?: string | null
+  criadoEm: string
+  atualizadoEm: string
+  ativo: boolean
+}
+
+export async function listVagaLinks(pagina = 1, quantidade = 10) {
+  const { data } = await api.get<{ itens: VagaLink[]; total: number; pagina: number; quantidade: number }>(
+    `/vagas-links`,
+    { params: { pagina, quantidade } }
+  )
+  return data
+}
+
+/** Payload para criar link de vaga: somente url é obrigatória */
+export type CreateVagaLinkPayload = {
+  url: string
+  titulo?: string
+  fonte?: string
+  descricao?: string
+  ativo?: boolean
+}
+
+export async function createVagaLink(payload: CreateVagaLinkPayload) {
+  const { data } = await api.post<VagaLink>(`/vagas-links`, payload)
+  return data
 }

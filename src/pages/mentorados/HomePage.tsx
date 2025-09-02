@@ -1,3 +1,4 @@
+// frontend/src/pages/mentorados/HomePage.tsx
 import { useEffect, useRef, useState } from "react"
 import MentoradoHeader from "../../components/layout/MentoradoHeader"
 import "../../styles/mentorados/home.css"
@@ -14,6 +15,9 @@ import {
   downloadCurriculo,
 } from "../../lib/api"
 import type { MentoradoAudio } from "../../lib/api"
+
+// NOVO: tabela de vagas (links) como componente
+import VagasTable from "../../components/mentorados/VagasTable"
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt)
@@ -207,7 +211,6 @@ export default function HomePage() {
           avatarUrl: data.avatarUrl ?? null,
           accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
           mentoradoId,
-          // pode vir vazio se nunca enviou currículo; após upload, o estado é atualizado
           curriculoUrl: data.mentorado?.curriculo?.url ?? null,
           curriculoNome: data.mentorado?.curriculo?.filename ?? null,
         })
@@ -437,6 +440,9 @@ export default function HomePage() {
             )}
           </div>
         </div>
+
+        {/* NOVO: Tabela de Vagas (links) ancorada na metade inferior (CSS em home.css) */}
+        <VagasTable pageSize={10} />
 
         <img src="/images/dashboard.png" alt="" className="mentorados-center-image" draggable={false} />
       </div>

@@ -183,3 +183,81 @@ body.dark-mode .cv-file{ color: #d1d5db; }
     width: 100%;
   }
 }
+
+/* === Vagas (tabela inferior ocupando metade da largura) === */
+/* === Vagas (fixa no rodapé ocupando metade da largura) === */
+.vagas-card {
+  position: fixed; /* fixa no viewport */
+  left: calc(var(--sidebar-w) + 25px); /* compensa a sidebar */
+  bottom: 475px;    /* distância do rodapé */
+  width: 40vw;     /* metade da tela */
+  /* segurança para não estourar em telas menores com sidebar grande */
+  max-width: calc(100vw - var(--sidebar-w) - 40px);
+
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 42vh;
+  overflow: hidden;
+  z-index: 10; /* acima dos cards; abaixo de modais */
+}
+
+/* (mantém o restante) */
+.vagas-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vagas-card__pager {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.vagas-card__pager > button {
+  border: 1px solid #ddd;
+  background: #fafafa;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.vagas-card__pager > button:disabled { opacity: .5; cursor: default; }
+
+.vagas-table__wrap {
+  overflow: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.vagas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.vagas-table th, .vagas-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+}
+.vagas-table thead th {
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.vagas-table__link a {
+  word-break: break-all;
+  color: #1677ff;
+  text-decoration: none;
+}
+.vagas-table__link a:hover { text-decoration: underline; }
+
+.vagas-table__loading,
+.vagas-table__empty {
+  text-align: center;
+  color: #777;
+}

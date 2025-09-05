@@ -1,4 +1,3 @@
-// frontend/src/components/mentorados/SsiMetasVertical.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   listSsiMetas,
@@ -7,6 +6,7 @@ import {
   type SsiMetrica,
   type SsiUnidade,
 } from "../../lib/api";
+import SsiSemanaModal from "./SsiSemanaModal";
 
 type Row = {
   metrica: SsiMetrica;
@@ -20,193 +20,58 @@ const GROUPS: { title: string; items: Array<Omit<Row, "valorMeta">> }[] = [
   {
     title: "Índices Gerais",
     items: [
-      {
-        metrica: "SSI_SETOR",
-        label: "SSI no seu Setor",
-        unidade: "PERCENTUAL",
-        placeholder: "1",
-      },
-      {
-        metrica: "SSI_REDE",
-        label: "SSI na sua Rede",
-        unidade: "PERCENTUAL",
-        placeholder: "1",
-      },
-      {
-        metrica: "SSI_TOTAL",
-        label: "Social Selling Index",
-        unidade: "NUMERO",
-        placeholder: "65",
-      },
-      {
-        metrica: "PILAR_MARCA",
-        label: "Estabelecer sua Marca Profissional",
-        unidade: "NUMERO",
-        placeholder: "18",
-      },
-      {
-        metrica: "PILAR_PESSOAS_CERTAS",
-        label: "Localizar as Pessoas Certas",
-        unidade: "NUMERO",
-        placeholder: "15",
-      },
-      {
-        metrica: "PILAR_INSIGHTS",
-        label: "Interagir oferecendo Insights",
-        unidade: "NUMERO",
-        placeholder: "15",
-      },
-      {
-        metrica: "PILAR_RELACIONAMENTOS",
-        label: "Cultivar Relacionamentos",
-        unidade: "NUMERO",
-        placeholder: "15",
-      },
+      { metrica: "SSI_SETOR", label: "SSI no seu Setor", unidade: "PERCENTUAL", placeholder: "1" },
+      { metrica: "SSI_REDE", label: "SSI na sua Rede", unidade: "PERCENTUAL", placeholder: "1" },
+      { metrica: "SSI_TOTAL", label: "Social Selling Index", unidade: "NUMERO", placeholder: "65" },
+      { metrica: "PILAR_MARCA", label: "Estabelecer sua Marca Profissional", unidade: "NUMERO", placeholder: "18" },
+      { metrica: "PILAR_PESSOAS_CERTAS", label: "Localizar as Pessoas Certas", unidade: "NUMERO", placeholder: "15" },
+      { metrica: "PILAR_INSIGHTS", label: "Interagir oferecendo Insights", unidade: "NUMERO", placeholder: "15" },
+      { metrica: "PILAR_RELACIONAMENTOS", label: "Cultivar Relacionamentos", unidade: "NUMERO", placeholder: "15" },
     ],
   },
   {
     title: "Alcance & Perfil (LinkedIn)",
     items: [
-      {
-        metrica: "IMPRESSOES_PUBLICACAO",
-        label: "Impressões da Publicação",
-        unidade: "NUMERO",
-        placeholder: "1000",
-      },
-      {
-        metrica: "VISUALIZACOES_PERFIL",
-        label: "Visualizações do Perfil",
-        unidade: "NUMERO",
-        placeholder: "100",
-      },
-      {
-        metrica: "OCORRENCIAS_PESQUISA",
-        label: "Ocorrências em Resultado de Pesquisa",
-        unidade: "NUMERO",
-        placeholder: "100",
-      },
-      {
-        metrica: "TAXA_RECRUTADORES",
-        label: "Taxa de Recrutadores que viram seu perfil",
-        unidade: "PERCENTUAL",
-        placeholder: "5",
-      },
+      { metrica: "IMPRESSOES_PUBLICACAO", label: "Impressões da Publicação", unidade: "NUMERO", placeholder: "1000" },
+      { metrica: "VISUALIZACOES_PERFIL", label: "Visualizações do Perfil", unidade: "NUMERO", placeholder: "100" },
+      { metrica: "OCORRENCIAS_PESQUISA", label: "Ocorrências em Resultado de Pesquisa", unidade: "NUMERO", placeholder: "100" },
+      { metrica: "TAXA_RECRUTADORES", label: "Taxa de Recrutadores que viram seu perfil", unidade: "PERCENTUAL", placeholder: "5" },
     ],
   },
   {
     title: "Candidaturas & RH",
     items: [
-      {
-        metrica: "CANDIDATURAS_SIMPLIFICADAS",
-        label: "Quantidade de Candidaturas Simplificadas",
-        unidade: "NUMERO",
-        placeholder: "10",
-      },
-      {
-        metrica: "CANDIDATURAS_VISUALIZADAS",
-        label: "Quantidade de Candidaturas Visualizadas",
-        unidade: "NUMERO",
-        placeholder: "3",
-      },
-      {
-        metrica: "CURRICULOS_BAIXADOS",
-        label: "Quantidade de Currículos Baixados",
-        unidade: "NUMERO",
-        placeholder: "3",
-      },
-      {
-        metrica: "CONTATOS_RH",
-        label: "Quantidade de Contatos de RHs na semana",
-        unidade: "NUMERO",
-        placeholder: "2",
-      },
+      { metrica: "CANDIDATURAS_SIMPLIFICADAS", label: "Quantidade de Candidaturas Simplificadas", unidade: "NUMERO", placeholder: "10" },
+      { metrica: "CANDIDATURAS_VISUALIZADAS", label: "Quantidade de Candidaturas Visualizadas", unidade: "NUMERO", placeholder: "3" },
+      { metrica: "CURRICULOS_BAIXADOS", label: "Quantidade de Currículos Baixados", unidade: "NUMERO", placeholder: "3" },
+      { metrica: "CONTATOS_RH", label: "Quantidade de Contatos de RHs na semana", unidade: "NUMERO", placeholder: "2" },
     ],
   },
   {
     title: "Conteúdo & Interações",
     items: [
-      {
-        metrica: "PUBLICACOES_SEMANA",
-        label: "Publicações na Semana",
-        unidade: "NUMERO",
-        placeholder: "3",
-      },
-      {
-        metrica: "INTERACOES_COMENTARIOS",
-        label: "Interações via comentários",
-        unidade: "NUMERO",
-        placeholder: "10",
-      },
-      {
-        metrica: "CONTRIBUICOES_ARTIGOS",
-        label: "Contribuições em Artigos Colaborativos",
-        unidade: "NUMERO",
-        placeholder: "1",
-      },
+      { metrica: "PUBLICACOES_SEMANA", label: "Publicações na Semana", unidade: "NUMERO", placeholder: "3" },
+      { metrica: "INTERACOES_COMENTARIOS", label: "Interações via comentários", unidade: "NUMERO", placeholder: "10" },
+      { metrica: "CONTRIBUICOES_ARTIGOS", label: "Contribuições em Artigos Colaborativos", unidade: "NUMERO", placeholder: "1" },
     ],
   },
   {
     title: "Networking",
     items: [
-      {
-        metrica: "PEDIDOS_CONEXAO_HEADHUNTERS",
-        label: "Pedidos de Conexão com Headhunters",
-        unidade: "NUMERO",
-        placeholder: "50",
-      },
-      {
-        metrica: "PEDIDOS_CONEXAO_DECISORES",
-        label: "Pedidos de Conexão com Decisores",
-        unidade: "NUMERO",
-        placeholder: "50",
-      },
-      {
-        metrica: "MENSAGENS_RECRUTADORES",
-        label: "Mensagens para Recrutadores",
-        unidade: "NUMERO",
-        placeholder: "10",
-      },
-      {
-        metrica: "MENSAGENS_NETWORKING",
-        label: "Mensagens para Networking",
-        unidade: "NUMERO",
-        placeholder: "10",
-      },
-      {
-        metrica: "CAFES_AGENDADOS",
-        label: "Cafés agendados com Networking",
-        unidade: "NUMERO",
-        placeholder: "2",
-      },
-      {
-        metrica: "CAFES_TOMADOS",
-        label: "Cafés Tomados na Semana",
-        unidade: "NUMERO",
-        placeholder: "1",
-      },
+      { metrica: "PEDIDOS_CONEXAO_HEADHUNTERS", label: "Pedidos de Conexão com Headhunters", unidade: "NUMERO", placeholder: "50" },
+      { metrica: "PEDIDOS_CONEXAO_DECISORES", label: "Pedidos de Conexão com Decisores", unidade: "NUMERO", placeholder: "50" },
+      { metrica: "MENSAGENS_RECRUTADORES", label: "Mensagens para Recrutadores", unidade: "NUMERO", placeholder: "10" },
+      { metrica: "MENSAGENS_NETWORKING", label: "Mensagens para Networking", unidade: "NUMERO", placeholder: "10" },
+      { metrica: "CAFES_AGENDADOS", label: "Cafés agendados com Networking", unidade: "NUMERO", placeholder: "2" },
+      { metrica: "CAFES_TOMADOS", label: "Cafés Tomados na Semana", unidade: "NUMERO", placeholder: "1" },
     ],
   },
   {
     title: "Processos",
     items: [
-      {
-        metrica: "ENTREVISTAS_REALIZADAS",
-        label: "Entrevistas Realizadas",
-        unidade: "NUMERO",
-        placeholder: "2",
-      },
-      {
-        metrica: "ENTREVISTAS_FASE_FINAL",
-        label: "Entrevistas em Fase Final",
-        unidade: "NUMERO",
-        placeholder: "1",
-      },
-      {
-        metrica: "CARTAS_OFERTA",
-        label: "Cartas Ofertas Recebida",
-        unidade: "NUMERO",
-        placeholder: "1",
-      },
+      { metrica: "ENTREVISTAS_REALIZADAS", label: "Entrevistas Realizadas", unidade: "NUMERO", placeholder: "2" },
+      { metrica: "ENTREVISTAS_FASE_FINAL", label: "Entrevistas em Fase Final", unidade: "NUMERO", placeholder: "1" },
+      { metrica: "CARTAS_OFERTA", label: "Cartas Ofertas Recebida", unidade: "NUMERO", placeholder: "1" },
     ],
   },
 ];
@@ -226,6 +91,7 @@ export default function SsiMetasVertical() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recalcular, setRecalcular] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const byMetrica = useMemo(() => {
     const map = new Map<SsiMetrica, Row>();
@@ -296,10 +162,10 @@ export default function SsiMetasVertical() {
       className="ssi-vertical-card"
       style={{
         gridColumn: "span 12",
-        width: "min(750px, 100%)",
-        marginLeft: "auto", // empurra para a direita
-        marginRight: 24, // "padding" da borda direita
-        marginTop: 100, // desce um pouco
+        width: "min(1600px, 100%)",
+        marginLeft: "0",
+        marginRight: 24,
+        marginTop: 20,
         background: "#fff",
         borderRadius: 12,
         boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
@@ -317,6 +183,13 @@ export default function SsiMetasVertical() {
       >
         <h3 style={{ margin: 0 }}>Metas do SSI (vertical)</h3>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            className="cv-upload-btn"
+            onClick={() => setModalOpen(true)}
+            style={{ outline: "none" }}
+          >
+            Ver semana
+          </button>
           <label style={{ fontSize: 13, color: "#555" }}>
             <input
               type="checkbox"
@@ -367,7 +240,6 @@ export default function SsiMetasVertical() {
                       key={item.metrica}
                       style={{
                         display: "grid",
-                        /* ↓↓↓ deixa as colunas mais estreitas para caber no card ↓↓↓ */
                         gridTemplateColumns: "minmax(180px, 1fr) 100px 120px",
                         gap: 10,
                         alignItems: "center",
@@ -428,6 +300,9 @@ export default function SsiMetasVertical() {
           )}
         </>
       )}
+
+      {/* Modal de seleção de semana */}
+      <SsiSemanaModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

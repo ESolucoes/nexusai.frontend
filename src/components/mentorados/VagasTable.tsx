@@ -1,5 +1,6 @@
+// frontend/src/components/mentorados/VagasTable.tsx
 import { useEffect, useState } from "react";
-import { listVagaLinks, createVagaLink, type VagaLink } from "../../lib/api";
+import { listMyVagaLinks, createMyVagaLink, type VagaLink } from "../../lib/api";
 
 type Props = { pageSize?: number };
 
@@ -16,23 +17,27 @@ export default function VagasTable({ pageSize = 10 }: Props) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await listMyVagaLinks(pagina, quantidade);
+      setItens(res.itens);
+      setTotal(res.total);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await listVagaLinks(pagina, quantidade);
-        setItens(res.itens);
-        setTotal(res.total);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagina, quantidade]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / quantidade));
 
   function normalizeUrl(raw: string) {
-    const s = raw.trim();
+    const s = (raw || "").trim();
+    if (!s) return "";
     if (!/^https?:\/\//i.test(s)) return `https://${s}`;
     return s;
   }
@@ -46,7 +51,7 @@ export default function VagasTable({ pageSize = 10 }: Props) {
     setSaving(true);
     setErr(null);
     try {
-      const novo = await createVagaLink({ url: normalized });
+      const novo = await createMyVagaLink({ url: normalized });
       if (pagina === 1) {
         setItens((prev) => [novo, ...prev]);
         setTotal((t) => t + 1);

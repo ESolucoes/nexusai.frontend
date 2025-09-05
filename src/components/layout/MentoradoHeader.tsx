@@ -11,25 +11,32 @@ export default function MentoradoHeader() {
       </div>
 
       <nav className="app-sidebar-nav">
-        {/* ativa só em /home/mentorado */}
+        {/* Dashboard do mentorado */}
         <NavLink
-          to="/home/mentorado"
+          to="/dashboard/mentorado"
           end
           className={({ isActive }) => (isActive ? "active" : "")}
         >
-          Home
+          Dashboard
         </NavLink>
 
-        {/* ativa em /home/mentorados/agentes e subrotas */}
+        {/* NOVO: Mapeamento (áudio + vagas) */}
         <NavLink
-          to="/home/mentorados/agentes"
+          to="/dashboard/mentorado/mapeamento"
+          className={({ isActive }) => (isActive ? "active" : "")}
+        >
+          Mapeamento
+        </NavLink>
+
+        {/* Agentes */}
+        <NavLink
+          to="/dashboard/mentorados/agentes"
           className={({ isActive }) => (isActive ? "active" : "")}
         >
           Agentes
         </NavLink>
       </nav>
 
-      {/* rodapé fixo */}
       <div className="app-sidebar-footer">
         <NavLink to="/" className="logout-link">
           Encerrar Seção

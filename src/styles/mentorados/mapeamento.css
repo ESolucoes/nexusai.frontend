@@ -1,0 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
+
+:root{
+  --azul: #0d6efd;
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --text: #0f172a;
+  --text-dim: #334155;
+  --sidebar-w: 260px;
+  --radius: 12px;
+}
+
+/* BLOQUEAR SOMENTE O SCROLL HORIZONTAL (global, sem alterar tamanhos) */
+html, body { 
+  overflow-x: hidden !important; 
+  max-width: 100%;
+}
+
+*{ box-sizing: border-box; }
+body, .mentorados-home{ font-family: 'Open Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans'; }
+body.no-scroll{ overflow: hidden; }
+
+/* container */
+.mentorados-home{
+  min-height: 100vh;
+  width: 100vw;
+  padding-left: var(--sidebar-w);
+  background: #fff;
+  position: relative;
+  overflow-x: hidden; /* reforço local */
+}
+
+/* grid de cards */
+.mentorados-cards{
+  position: relative;
+  z-index: 2;
+  padding: 24px 20px 0 20px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(12, 1fr);
+  overflow-x: hidden; /* reforço anti-scroll horizontal */
+}
+
+/* Quebras responsivas */
+@media (max-width: 1200px){ .mentorados-cards{ grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 960px){  .mentorados-cards{ grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 720px){  .mentorados-cards{ grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px){  .mentorados-cards{ grid-template-columns: 1fr; } }
+
+/* Cards base */
+.mentorados-card{
+  grid-column: span 4;
+  min-height: 110px;
+  background: #0d6efd;
+  color: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+@media (max-width: 1440px){ .mentorados-card{ grid-column: span 6; } }
+@media (max-width: 960px){  .mentorados-card{ grid-column: span 4; } }
+@media (max-width: 720px){  .mentorados-card{ grid-column: span 2; } }
+@media (max-width: 520px){  .mentorados-card{ grid-column: span 1; } }
+
+/* ===== Card do CURRÍCULO ===== */
+.mentorados-card--cv{
+  grid-column: span 4;
+  min-height: 110px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.10);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  color: var(--text);
+}
+@media (max-width: 1440px){ .mentorados-card--cv{ grid-column: span 6; } }
+@media (max-width: 960px){  .mentorados-card--cv{ grid-column: span 4; } }
+@media (max-width: 720px){  .mentorados-card--cv{ grid-column: span 2; } }
+@media (max-width: 520px){  .mentorados-card--cv{ grid-column: span 1; } }
+
+.mentorados-cv-info{
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mentorados-cv-info h3{
+  margin: 0; font-size: 16px; font-weight: 900; color: var(--text);
+  letter-spacing: .2px;
+}
+.cv-file{
+  margin: 0; font-size: 13px; font-weight: 700; color: var(--text-dim);
+}
+.cv-file--empty{ opacity: .9; }
+.cv-download{
+  margin-left: 10px; font-size: 12px; font-weight: 800; text-decoration: none;
+  padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,.1);
+  background: rgba(255,255,255,.9); color: var(--azul);
+}
+.cv-download:hover{ background: #fff; }
+
+.cv-upload-btn{
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--azul);
+  background: var(--azul);
+  color: #fff;
+  font-weight: 800;
+  padding: 0 14px;
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+  white-space: nowrap;
+}
+.cv-upload-btn:hover{
+  background: #a4825c;
+  border-color: #a4825c;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+.cv-upload-btn:disabled{
+  opacity: .6; cursor: not-allowed;
+}
+
+/* ===== Card de Áudio (em GRID) ===== */
+.mentorados-card--audio{
+  grid-column: span 4;
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 1440px){ .mentorados-card--audio{ grid-column: span 6; } }
+@media (max-width: 960px){  .mentorados-card--audio{ grid-column: span 4; } }
+@media (max-width: 720px){  .mentorados-card--audio{ grid-column: span 2; } }
+@media (max-width: 520px){  .mentorados-card--audio{ grid-column: span 1; } }
+
+/* imagem decorativa */
+.mentorados-center-image{
+  position: fixed;
+  z-index: 1;
+  top: 55%;
+  left: calc(50% + (var(--sidebar-w) / 2));
+  transform: translate(-50%, -50%);
+  height: auto; width: clamp(480px, 40vw, 1200px);
+  opacity: .16;
+  pointer-events: none; user-select: none;
+}
+
+/* Dark mode */
+body.dark-mode .mentorados-home{ background: #121212; }
+body.dark-mode .mentorados-card--cv{
+  background: rgba(18, 18, 18, 0.35);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #f5f7fb;
+}
+body.dark-mode .mentorados-cv-info h3{ color: #f5f7fb; }
+body.dark-mode .cv-file{ color: #d1d5db; }
+
+/* quando já existe currículo */
+.mentorados-card--cv.has-file { justify-content: flex-start; align-items: stretch; padding-block: 18px; }
+.mentorados-cv-col { display: flex; flex-direction: column; gap: 10px; }
+.mentorados-card--cv.has-file .cv-upload-btn { align-self: flex-start; }
+
+@media (max-width: 520px) {
+  .mentorados-card--cv.has-file .cv-upload-btn { width: 100%; }
+}
+
+/* ===== Vagas (rola junto com a página no scroller) ===== */
+.vagas-card {
+  position: relative;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 42vh;
+  overflow: hidden;
+  z-index: 10;
+  grid-column: span 8;
+}
+@media (max-width: 1440px){ .vagas-card{ grid-column: span 12; } }
+@media (max-width: 960px){  .vagas-card{ grid-column: span 4; } }
+@media (max-width: 720px){  .vagas-card{ grid-column: span 2; } }
+@media (max-width: 520px){  .vagas-card{ grid-column: span 1; } }
+
+.vagas-card__header { display: flex; align-items: center; justify-content: space-between; }
+.vagas-card__pager { display: flex; gap: 8px; align-items: center; }
+.vagas-card__pager > button {
+  border: 1px solid #ddd; background: #fafafa; padding: 4px 8px; border-radius: 8px; cursor: pointer;
+}
+.vagas-card__pager > button:disabled { opacity: .5; cursor: default; }
+
+.vagas-table__wrap { overflow: auto; border: 1px solid #eee; border-radius: 8px; }
+.vagas-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.vagas-table th, .vagas-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+.vagas-table thead th { background: #fafafa; position: sticky; top: 0; z-index: 1; }
+.vagas-table__link a { word-break: break-all; color: #1677ff; text-decoration: none; }
+.vagas-table__link a:hover { text-decoration: underline; }
+.vagas-table__loading, .vagas-table__empty { text-align: center; color: #777; }

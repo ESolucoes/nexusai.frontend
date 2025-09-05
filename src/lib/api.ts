@@ -1,4 +1,3 @@
-// frontend/src/lib/api.ts
 import axios from "axios"
 
 /* ============================ JWT helpers ============================ */
@@ -294,7 +293,8 @@ export type VagaLink = {
   ativo: boolean
 }
 
-export async function listVagaLinks(pagina = 1, quantidade = 10) {
+/** Lista SOMENTE os links do usuário autenticado (scoped via JWT) */
+export async function listMyVagaLinks(pagina = 1, quantidade = 10) {
   const { data } = await api.get<{
     itens: VagaLink[]
     total: number
@@ -312,7 +312,8 @@ export type CreateVagaLinkPayload = {
   ativo?: boolean
 }
 
-export async function createVagaLink(payload: CreateVagaLinkPayload) {
+/** Cria link para o usuário autenticado (backend seta owner via JWT) */
+export async function createMyVagaLink(payload: CreateVagaLinkPayload) {
   const { data } = await api.post<VagaLink>(`/vagas-links`, payload)
   return data
 }
@@ -348,7 +349,6 @@ export type SsiMetrica =
   | "CARTAS_OFERTA"
 
 export type SsiUnidade = "NUMERO" | "PERCENTUAL"
-
 export type SsiStatus = "OTIMO" | "BOM" | "RUIM"
 
 export type SsiResultado = {
@@ -442,4 +442,35 @@ export async function upsertSsiMetasBatch(
     params: { recalcular: recalc ? "true" : "false" },
   })
   return data
+}
+
+/* ============================ SSI: Semanas & Consulta por semana ============================ */
+export type SsiWeekRef = { dataReferencia: string; totalMetricas: number };
+
+export type SsiSemanaPayload = {
+  semana: string; // segunda-feira normalizada
+  itens: Array<{
+    id: string;
+    usuarioId: string | null;
+    metrica: SsiMetrica;
+    dataReferencia: string;
+    valor: string;
+    unidade: SsiUnidade;
+    status: "OTIMO" | "BOM" | "RUIM";
+    metaAplicada: string;
+    criadoEm: string;
+    atualizadoEm: string;
+  }>;
+};
+
+export async function listSsiWeeks() {
+  const { data } = await api.get<SsiWeekRef[]>("/ssi/semanas");
+  return data;
+}
+
+export async function getSsiByWeek(date: string) {
+  const { data } = await api.get<SsiSemanaPayload>("/ssi/por-semana", {
+    params: { data: date },
+  });
+  return data;
 }

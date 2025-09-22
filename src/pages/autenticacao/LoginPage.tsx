@@ -109,7 +109,7 @@ export default function LoginPage() {
           return
         }
         if (perfil === "mentorado") {
-          navigate("/home/mentorado")
+          navigate("/dashboard/mentorado")
           return
         }
         setErro("Perfil não autorizado para acesso.")

@@ -1,24 +1,46 @@
 // frontend/src/pages/mentores/MentoresMentoradoHomePage.tsx
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
-import Header from "../../components/layout/Header";
+import Header from "../../components/layout/Header"
 import "../../styles/mentorados/home.css"
 import {
   api,
-  uploadCurriculo,
   getUsuarioById,
   listMentoradoAudios,
   uploadMentoradoAudio,
   downloadMentoradoAudio,
   fetchAudioBlob,
-  downloadCurriculo,
+  // === Currículo ===
+  listMentoradoCurriculos,
+  uploadCurriculos,
+  uploadCurriculo,
+  downloadCurriculo,          // último (compat)
+  downloadCurriculoByName,    // por nome (novo)
+  type MentoradoCurriculo,
+  type MentoradoAudio,
 } from "../../lib/api"
-import type { MentoradoAudio } from "../../lib/api"
 
 // Tabela de Vagas
 import VagasTable from "../../components/mentorados/VagasTable"
 // Metas do SSI (vertical) — mesma página dos mentorados
-import SsiMetasVertical from "../../components/mentorados/SsiMetasVertical"
+import SsiMetasVertical from "../../components/mentorados/SsiDashboardTabela"
+
+/** Normaliza URL (caso backend retorne relativa) */
+function resolveImageUrl(u?: string | null): string | null {
+  if (!u) return null
+  if (/^https?:\/\//i.test(u)) return u
+  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "")
+  const path = String(u).replace(/^\/+/, "")
+  if (!base) return `/${path}`
+  return `${base}/${path}`
+}
+
+/** Adiciona cache-busting pra refletir avatar atualizado na hora */
+function cacheBust(u?: string | null): string | null {
+  if (!u) return u ?? null
+  const sep = u.includes("?") ? "&" : "?"
+  return `${u}${sep}t=${Date.now()}`
+}
 
 /* ============================ MODAL DE ÁUDIO ============================ */
 function AudioRecorderModal(props: {
@@ -38,6 +60,24 @@ function AudioRecorderModal(props: {
   const mediaRecRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
+  // Descobre o melhor mime para gravar (tenta WAV, senão fallback)
+  function pickBestMime(): string | undefined {
+    const candidates = [
+      "audio/wav",
+      "audio/wave",
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus",
+      "audio/ogg",
+    ]
+    const isSup = (t: string) =>
+      typeof (window as any).MediaRecorder !== "undefined" &&
+      typeof MediaRecorder.isTypeSupported === "function" &&
+      MediaRecorder.isTypeSupported(t)
+    return candidates.find(isSup) || undefined
+  }
+
   useEffect(() => {
     if (open) {
       ;(async () => {
@@ -56,13 +96,13 @@ function AudioRecorderModal(props: {
               setSelectedMic(ins[0].deviceId)
             }
           }
-        } catch {}
+        } catch {
+          // ignore
+        }
       })()
     }
     return () => {
-      try {
-        mediaRecRef.current?.stop()
-      } catch {}
+      try { mediaRecRef.current?.stop() } catch {}
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
       mediaRecRef.current = null
       mediaStreamRef.current = null
@@ -75,20 +115,25 @@ function AudioRecorderModal(props: {
   }, [open])
 
   async function start() {
-    if (!navigator?.mediaDevices?.getUserMedia)
-      return alert("Gravação não suportada neste navegador.")
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      alert("Gravação não suportada neste navegador.")
+      return
+    }
     const constraints: MediaStreamConstraints = selectedMic
       ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints })
       : { audio: true }
+
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
     mediaStreamRef.current = stream
-    const rec = new MediaRecorder(stream, { mimeType: "audio/webm" })
+
+    const mimeType = pickBestMime()
+    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
     chunksRef.current = []
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data)
-    }
+    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     rec.onstop = () => {
-      const b = new Blob(chunksRef.current, { type: "audio/webm" })
+      // Blob com o mesmo tipo usado pelo MediaRecorder (ou o default do browser)
+      const finalType = rec.mimeType || mimeType || "audio/webm"
+      const b = new Blob(chunksRef.current, { type: finalType })
       setBlob(b)
       setBlobUrl(URL.createObjectURL(b))
     }
@@ -96,23 +141,27 @@ function AudioRecorderModal(props: {
     rec.start()
     setRecording(true)
   }
+
   function stop() {
-    try {
-      mediaRecRef.current?.stop()
-    } catch {}
+    try { mediaRecRef.current?.stop() } catch {}
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
     setRecording(false)
   }
+
   async function save() {
     if (!blob) return
     try {
+      // uploadMentoradoAudio já garante nome compatível (.wav/.mp3) com base no tipo
       const { ok, audio } = await uploadMentoradoAudio(mentoradoId, blob)
       if (!ok) throw new Error("upload falhou")
       onSaved?.(audio)
       onClose()
     } catch (err: any) {
       console.error("[Audio] upload falhou:", err?.response?.data ?? err?.message)
-      alert("Falha ao salvar o áudio.")
+      alert(
+        (err?.response?.data?.message as string) ||
+        "Falha ao salvar o áudio. Verifique se o navegador permitiu o microfone."
+      )
     }
   }
 
@@ -162,31 +211,25 @@ function AudioRecorderModal(props: {
         </div>
 
         <div style={{ display: "flex", gap: 10, margin: "14px 0" }}>
-          {!recording && (
-            <button onClick={start} className="cv-upload-btn">
-              Iniciar Gravação
-            </button>
-          )}
-          {recording && (
-            <button onClick={stop} className="cv-upload-btn">
-              Parar
-            </button>
-          )}
-          {blobUrl && !recording && (
-            <button onClick={save} className="cv-upload-btn">
-              Salvar
-            </button>
-          )}
-          <button onClick={onClose} className="cv-upload-btn">
-            Fechar
-          </button>
+          {!recording && (<button onClick={start} className="cv-upload-btn">Iniciar Gravação</button>)}
+          {recording && (<button onClick={stop} className="cv-upload-btn">Parar</button>)}
+          {blobUrl && !recording && (<button onClick={save} className="cv-upload-btn">Salvar</button>)}
+          <button onClick={onClose} className="cv-upload-btn">Fechar</button>
         </div>
 
         {blobUrl ? (
           <>
             <audio src={blobUrl} controls style={{ width: "100%" }} />
             <div style={{ marginTop: 6 }}>
-              <a href={blobUrl} download={`gravacao-${Date.now()}.webm`} className="cv-download">
+              {/* Baixa a PRÉVIA local; extensão meramente cosmética para o preview */}
+              <a
+                href={blobUrl}
+                download={`gravacao-${Date.now()}${
+                  (blob?.type || "").toLowerCase().includes("wav") ? ".wav" :
+                  (blob?.type || "").toLowerCase().includes("mpeg") ? ".mp3" : ".webm"
+                }`}
+                className="cv-download"
+              >
                 Baixar prévia
               </a>
             </div>
@@ -215,8 +258,6 @@ export default function MentoresMentoradoHomePage() {
     avatarUrl?: string | null
     accountType: "Executive" | "First Class" | null
     mentoradoId?: string | null
-    curriculoUrl?: string | null
-    curriculoNome?: string | null
   }>({
     id: undefined,
     nome: "Carregando...",
@@ -224,10 +265,9 @@ export default function MentoresMentoradoHomePage() {
     avatarUrl: null,
     accountType: null,
     mentoradoId: null,
-    curriculoUrl: null,
-    curriculoNome: null,
   })
 
+  const [curriculos, setCurriculos] = useState<MentoradoCurriculo[]>([])
   const [audios, setAudios] = useState<MentoradoAudio[]>([])
   const [audioModalOpen, setAudioModalOpen] = useState(false)
   const [ultimoAudioSrc, setUltimoAudioSrc] = useState<string | null>(null)
@@ -241,6 +281,7 @@ export default function MentoresMentoradoHomePage() {
     return () => document.body.classList.remove("no-scroll")
   }, [])
 
+  // Carregar usuário + mentoradoId + audios + currículos
   useEffect(() => {
     ;(async () => {
       if (!usuarioIdParam) {
@@ -254,33 +295,31 @@ export default function MentoresMentoradoHomePage() {
           id: data.id,
           nome: data.nome ?? "Usuário",
           email: data.email ?? "",
-          avatarUrl: data.avatarUrl ?? null,
+          avatarUrl: resolveImageUrl(data.avatarUrl) ?? null, // normaliza
           accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
           mentoradoId,
-          curriculoUrl: data.mentorado?.curriculo?.url ?? null,
-          curriculoNome: data.mentorado?.curriculo?.filename ?? null,
         })
 
         if (mentoradoId) {
-          const res = await listMentoradoAudios(mentoradoId).catch(() => null)
-          if (res?.ok) setAudios(res.audios)
+          // Áudios
+          const resAud = await listMentoradoAudios(mentoradoId).catch(() => null)
+          if (resAud?.ok) setAudios(resAud.audios)
+
+          // Currículos
+          const resCv = await listMentoradoCurriculos(mentoradoId).catch(() => null)
+          setCurriculos(resCv?.arquivos || [])
         }
       } catch (err) {
         console.error("[MentoresMentoradoHomePage] GET /usuarios/{id} falhou:", err)
-        setUsuario((prev) => ({
-          ...prev,
-          nome: "Usuário",
-          email: "",
-          avatarUrl: null,
-          accountType: null,
-          mentoradoId: null,
-          curriculoUrl: null,
-          curriculoNome: null,
-        }))
+        setUsuario({
+          id: undefined, nome: "Usuário", email: "", avatarUrl: null, accountType: null, mentoradoId: null,
+        })
+        setCurriculos([])
       }
     })()
   }, [usuarioIdParam, mentoradoIdParam])
 
+  // Prévia do último áudio (sempre atualiza quando a lista mudar)
   useEffect(() => {
     ;(async () => {
       if (!usuario.mentoradoId) return
@@ -318,9 +357,15 @@ export default function MentoresMentoradoHomePage() {
     formData.append("file", file)
     try {
       const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData)
-      if (data?.url) setUsuario((prev) => ({ ...prev, avatarUrl: data.url }))
+      if (data?.url) {
+        const absolute = resolveImageUrl(String(data.url))
+        const busted = cacheBust(absolute)
+        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }))
+      }
     } catch (err) {
       console.error("[MentoresMentoradoHomePage] upload avatar falhou:", err)
+    } finally {
+      if (e.currentTarget) e.currentTarget.value = ""
     }
   }
 
@@ -329,51 +374,47 @@ export default function MentoresMentoradoHomePage() {
   }
 
   async function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
     if (!usuario.mentoradoId) {
       alert("Finalize o cadastro de mentorado antes de enviar o currículo.")
       e.currentTarget.value = ""
       return
     }
     try {
-      const res = await uploadCurriculo(usuario.mentoradoId, file)
-      setUsuario((prev) => ({
-        ...prev,
-        curriculoUrl: res?.url ?? null,
-        curriculoNome: res?.filename ?? file.name,
-      }))
+      if (files.length === 1) {
+        await uploadCurriculo(usuario.mentoradoId, files[0]) // compat
+      } else {
+        await uploadCurriculos(usuario.mentoradoId, Array.from(files))
+      }
+      // refresh da lista
+      const res = await listMentoradoCurriculos(usuario.mentoradoId)
+      setCurriculos(res.arquivos || [])
     } catch (err) {
       console.error("[MentoresMentoradoHomePage] upload currículo falhou:", err)
-      alert("Falha no upload do currículo.")
+      alert("Falha no upload do(s) currículo(s).")
     } finally {
       e.currentTarget.value = ""
     }
   }
 
-  async function handleCvDownload() {
+  async function handleCvDownloadLatest() {
     if (!usuario.mentoradoId) return
     try {
       await downloadCurriculo(usuario.mentoradoId)
     } catch (err: any) {
-      console.error(
-        "[MentoresMentoradoHomePage] download currículo falhou:",
-        err?.response?.data ?? err?.message,
-      )
-      alert("Falha ao baixar o currículo.")
+      console.error("[MentoresMentoradoHomePage] download (último) falhou:", err?.response?.data ?? err?.message)
+      alert("Falha ao baixar o currículo (último).")
     }
   }
 
-  async function handleAudioDownload(a: MentoradoAudio) {
+  async function handleCvDownloadByName(filename: string) {
     if (!usuario.mentoradoId) return
     try {
-      await downloadMentoradoAudio(usuario.mentoradoId, a)
+      await downloadCurriculoByName(usuario.mentoradoId, filename)
     } catch (err: any) {
-      console.error(
-        "[MentoresMentoradoHomePage] download áudio falhou:",
-        err?.response?.data ?? err?.message,
-      )
-      alert("Falha ao baixar o áudio.")
+      console.error("[MentoresMentoradoHomePage] download por nome falhou:", err?.response?.data ?? err?.message)
+      alert("Falha ao baixar o arquivo.")
     }
   }
 
@@ -384,10 +425,9 @@ export default function MentoresMentoradoHomePage() {
       ? "mentorados-badge badge--firstclass"
       : "mentorados-badge hidden"
 
-  const hasCv = Boolean(usuario.curriculoNome)
-  const ultimoAudio = audios?.[0] || null
+  const hasCv = curriculos.length > 0
+  const ultimoCv = hasCv ? curriculos[0] : null
 
-  // página id inválido
   const idInvalido = !usuarioIdParam
 
   return (
@@ -441,55 +481,57 @@ export default function MentoresMentoradoHomePage() {
               <span className={badgeClass}>{usuario.accountType ?? ""}</span>
             </div>
 
-            {/* CARD DO CURRÍCULO */}
+            {/* CARD DO CURRÍCULO - agora com LISTA */}
             <div className={`mentorados-card mentorados-card--cv${hasCv ? " has-file" : ""}`}>
-              {hasCv ? (
-                <div className="mentorados-cv-col">
-                  <div
-                    className="mentorados-cv-info"
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
-                  >
-                    <div>
-                      <h3>Currículo</h3>
-                      <p className="cv-file">
-                        {usuario.curriculoNome}
-                        <button onClick={handleCvDownload} className="cv-download" style={{ marginLeft: 8 }}>
-                          Baixar
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                  <button className="cv-upload-btn" onClick={handleCvClick}>
-                    Enviar novo Currículo (PDF/DOC/DOCX)
-                  </button>
+              <div
+                className="mentorados-cv-info"
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%" }}
+              >
+                <div>
+                  <h3>Currículos</h3>
+                  {!hasCv && <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>}
+                  {hasCv && (
+                    <>
+                      {ultimoCv && (
+                        <p className="cv-file" style={{ marginBottom: 8 }}>
+                          <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
+                          <button onClick={handleCvDownloadLatest} className="cv-download" style={{ marginLeft: 8 }}>
+                            Baixar Último
+                          </button>
+                        </p>
+                      )}
+                      <div style={{ maxHeight: 180, overflowY: "auto", borderTop: "1px solid #eee", paddingTop: 8 }}>
+                        {curriculos.map((c) => (
+                          <div
+                            key={c.filename}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "6px 0" }}
+                          >
+                            <div style={{ fontSize: 14, color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {c.originalName || c.filename}
+                              <span style={{ color: "#888", fontSize: 12, marginLeft: 8 }}>
+                                {new Date(c.savedAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <button className="cv-download" onClick={() => handleCvDownloadByName(c.filename)}>
+                              Baixar
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <div
-                    className="mentorados-cv-info"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: "100%",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <h3>Currículo</h3>
-                      <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>
-                    </div>
-                  </div>
-                  <button className="cv-upload-btn" onClick={handleCvClick}>
-                    Enviar Currículo (PDF/DOC/DOCX)
-                  </button>
-                </>
-              )}
+              </div>
+
+              <button className="cv-upload-btn" onClick={handleCvClick}>
+                Enviar Currículo(s) (PDF/DOC/DOCX)
+              </button>
 
               <input
                 type="file"
                 ref={cvInputRef}
                 style={{ display: "none" }}
+                multiple
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleCvChange}
               />
@@ -526,21 +568,17 @@ export default function MentoresMentoradoHomePage() {
 
               <div style={{ marginTop: 2 }}>
                 <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>Último Áudio</div>
-                {ultimoAudio ? (
+                {audios?.[0] ? (
                   <>
                     <audio src={ultimoAudioSrc ?? ""} controls style={{ width: "100%" }} />
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 10,
-                        alignItems: "center",
-                        marginTop: 4,
-                      }}
-                    >
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
                       <span style={{ fontSize: 12, color: "#777" }}>
-                        {ultimoAudio.filename} • {(ultimoAudio.size / 1024).toFixed(1)} KB
+                        {audios[0].filename} • {(audios[0].size / 1024).toFixed(1)} KB
                       </span>
-                      <button onClick={() => handleAudioDownload(ultimoAudio)} className="cv-download">
+                      <button
+                        onClick={() => audios?.[0] && downloadMentoradoAudio(usuario.mentoradoId!, audios[0])}
+                        className="cv-download"
+                      >
                         Baixar
                       </button>
                     </div>
@@ -569,6 +607,7 @@ export default function MentoresMentoradoHomePage() {
           onClose={() => setAudioModalOpen(false)}
           mentoradoId={usuario.mentoradoId}
           onSaved={async (audio) => {
+            // coloca no topo e força recarregar preview
             setAudios((prev) => [audio, ...prev])
           }}
         />

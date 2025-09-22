@@ -1,4 +1,3 @@
-// frontend/src/router/index.tsx
 import { lazy } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
@@ -9,12 +8,15 @@ const RegisterMentorPage = lazy(() => import('../pages/autenticacao/RegisterMent
 const DashboardPage = lazy(() => import('../pages/mentores/DashboardPage'))
 const AgentesPage = lazy(() => import('../pages/mentores/AgentesPage'))
 
+// NOVOS
+const PerfilMentorPage = lazy(() => import('../pages/mentores/PerfilMentorPage'))
+const PerfilMentoradoPage = lazy(() => import('../pages/mentorados/PerfilMentoradoPage'))
+
 // Mentorado
 const MentoradoHomePage = lazy(() => import('../pages/mentorados/HomePage'))
-const MentoradoMapeamentoPage = lazy(() => import('../pages/mentorados/MapeamentoPage')) // NOVA
+const MentoradoMapeamentoPage = lazy(() => import('../pages/mentorados/MapeamentoPage'))
 const MentoradoAgentesPage = lazy(() => import('../pages/mentorados/AgentesPage'))
 
-// Mentores: visualizar um mentorado
 const MentoresMentoradoHomePage = lazy(() => import('../pages/mentores/MentoresMentoradoHomePage'))
 
 export const router = createBrowserRouter([
@@ -29,12 +31,17 @@ export const router = createBrowserRouter([
   { path: '/dashboard/mentores', element: <DashboardPage /> },
   { path: '/mentores/agentes', element: <AgentesPage /> },
 
-  // visão do mentor sobre um mentorado específico (passar ?id=<usuarioId>)
+  // NOVA: Perfil do Mentor
+  { path: '/mentores/perfil', element: <PerfilMentorPage /> },
+
+  // visão do mentor sobre um mentorado específico
   { path: '/mentores/home/mentorado', element: <MentoresMentoradoHomePage /> },
 
   // Mentorado
   { path: '/dashboard/mentorado', element: <MentoradoHomePage /> },
-  // NOVA ROTA Mapeamento (fica "no meio" entre Dashboard e Agentes)
   { path: '/dashboard/mentorado/mapeamento', element: <MentoradoMapeamentoPage /> },
   { path: '/dashboard/mentorados/agentes', element: <MentoradoAgentesPage /> },
+
+  // NOVA: Perfil do Mentorado
+  { path: '/dashboard/mentorado/perfil', element: <PerfilMentoradoPage /> },
 ])

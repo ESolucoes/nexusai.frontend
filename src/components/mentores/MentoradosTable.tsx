@@ -29,8 +29,21 @@ type MentoradosResponse = {
   meta: PaginatedMeta
 }
 
+/** 🔧 Normaliza URLs relativas vindas do backend para absolutas (baseada no api.baseURL) */
+function resolveImageUrl(u?: string | null): string | null {
+  if (!u) return null
+  if (/^https?:\/\//i.test(u)) return u
+  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "")
+  const path = String(u).replace(/^\/+/, "")
+  if (!base) return `/${path}`
+  return `${base}/${path}`
+}
+
 type UsuarioDetalhe = {
   id: string
+  /** avatar do próprio usuário mentorado (alguns backends usam avatarUrl, outros foto) */
+  avatarUrl?: string | null
+  foto?: string | null
   mentorado?: {
     mentor?: {
       usuario?: {
@@ -82,6 +95,8 @@ export default function MentoradosTable({
   const [mentorCol, setMentorCol] = useState<Record<string, MentorInfo>>({})
   const [vigenciaOn, setVigenciaOn] = useState<Record<string, boolean>>({})
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({})
+  /** avatar do próprio mentorado (aluno) por linha */
+  const [mentoradoAvatar, setMentoradoAvatar] = useState<Record<string, string>>({})
 
   const dBusca = useDebounce(busca, 400)
   const dPage = useDebounce(page, 100)
@@ -133,6 +148,7 @@ export default function MentoradosTable({
       setMentorCol({})
       setVigenciaOn({})
       setRowLoading({})
+      setMentoradoAvatar({})
       return
     }
     let canceled = false
@@ -149,21 +165,29 @@ export default function MentoradosTable({
         if (canceled) return
         const m: Record<string, MentorInfo> = {}
         const v: Record<string, boolean> = {}
+        const avas: Record<string, string> = {}
         for (const d of detalhes) {
           const u = d.data?.mentorado?.mentor?.usuario
+          // mentor (quem orienta)
           m[d.id] = {
             nome: u?.nome,
             email: u?.email,
-            avatar: u?.avatar ?? u?.foto ?? null,
+            avatar: resolveImageUrl(u?.avatar ?? u?.foto ?? null),
           }
+          // status de vigência
           v[d.id] = Boolean(d.data?.vigenciaAtiva)
+          // avatar do próprio mentorado (aluno)
+          const selfAvatar = resolveImageUrl(d.data?.avatarUrl ?? d.data?.foto ?? null)
+          if (selfAvatar) avas[d.id] = selfAvatar
         }
         setMentorCol(m)
         setVigenciaOn(v)
+        setMentoradoAvatar(avas)
       } catch {
         if (!canceled) {
           setMentorCol({})
           setVigenciaOn({})
+          setMentoradoAvatar({})
         }
       }
     })()
@@ -253,6 +277,7 @@ export default function MentoradosTable({
               const mentorAvatar = mentorInfo?.avatar || "/images/avatar.png"
               const mentorNome = mentorInfo?.nome
               const mentorEmail = mentorInfo?.email
+              const alunoAvatar = mentoradoAvatar[m.id] || "/images/avatar.png"
               return (
                 <tr
                   key={m.id}
@@ -261,7 +286,21 @@ export default function MentoradosTable({
                   title="Abrir página do mentorado"
                 >
                   <td>
-                    <img src="/images/avatar.png" alt={m.nome} className="mentor-avatar" draggable={false} />
+                    <img
+                      src={alunoAvatar}
+                      alt={m.nome}
+                      className="mentor-avatar"
+                      draggable={false}
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement
+                        if (
+                          img.src !== window.location.origin + "/images/avatar.png" &&
+                          img.src !== "/images/avatar.png"
+                        ) {
+                          img.src = "/images/avatar.png"
+                        }
+                      }}
+                    />
                   </td>
                   <td>
                     <span className={`tipo-badge ${m.tipo === "Executive" ? "admin" : "normal"}`} style={{ marginRight: 8 }}>
@@ -279,6 +318,15 @@ export default function MentoradosTable({
                           className="mentor-avatar"
                           draggable={false}
                           style={{ width: 28, height: 28, borderRadius: "9999px", objectFit: "cover" }}
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement
+                            if (
+                              img.src !== window.location.origin + "/images/avatar.png" &&
+                              img.src !== "/images/avatar.png"
+                            ) {
+                              img.src = "/images/avatar.png"
+                            }
+                          }}
                         />
                         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
                           <span title={mentorNome || ""}>{mentorNome || "-"}</span>

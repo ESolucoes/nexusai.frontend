@@ -29,6 +29,23 @@ function decodeJwt<T = any>(token?: string | null): T | null {
   }
 }
 
+/** Normaliza URL que pode vir relativa do backend. */
+function resolveImageUrl(u?: string | null): string | null {
+  if (!u) return null;
+  if (/^https?:\/\//i.test(u)) return u;
+  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "");
+  const path = String(u).replace(/^\/+/, "");
+  if (!base) return `/${path}`;
+  return `${base}/${path}`;
+}
+
+/** Adiciona cache-busting pra refletir avatar atualizado na hora. */
+function cacheBust(u?: string | null): string | null {
+  if (!u) return u ?? null;
+  const sep = u.includes("?") ? "&" : "?";
+  return `${u}${sep}t=${Date.now()}`;
+}
+
 export default function DashboardPage() {
   const [usuario, setUsuario] = useState<{
     id?: string;
@@ -84,7 +101,8 @@ export default function DashboardPage() {
           nome: data.nome || "Usuário",
           email: data.email || "",
           tipoConta: tipo === "admin" ? "admin" : "normal",
-          avatarUrl: data.avatarUrl || null,
+          // normaliza possível URL relativa vinda do backend
+          avatarUrl: resolveImageUrl(data.avatarUrl) || null,
         });
       } catch {
         setUsuario({ nome: "Usuário", email: "", tipoConta: "normal", avatarUrl: null });
@@ -151,15 +169,17 @@ export default function DashboardPage() {
     formData.append("file", file);
 
     try {
-      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
+      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData);
       if (data?.url) {
-        setUsuario((prev) => ({ ...prev, avatarUrl: data.url }));
+        // normaliza a URL (caso venha relativa) + cache-busting
+        const absolute = resolveImageUrl(String(data.url));
+        const busted = cacheBust(absolute);
+        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }));
       }
     } catch (err) {
       console.error("Erro ao enviar avatar", err);
+    } finally {
+      if (e.currentTarget) e.currentTarget.value = ""
     }
   }
 

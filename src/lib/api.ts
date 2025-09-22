@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts
 import axios from "axios"
 
 /* ============================ JWT helpers ============================ */
@@ -74,6 +75,26 @@ function joinUrl(root: string, path: string) {
 }
 export function apiUrl(p: string) {
   return joinUrl(baseURL, p)
+}
+
+/** Retorna true se a URL já é absoluta (http/https/data/blob) */
+function isAbsoluteUrl(u?: string | null) {
+  return !!u && /^(?:https?:|data:|blob:)/i.test(u)
+}
+
+/** Normaliza URL de imagem/arquivo (se vier relativa do backend, prefixa com baseURL) */
+export function resolveImageUrl(u?: string | null): string | null {
+  if (!u) return null
+  if (isAbsoluteUrl(u)) return u
+  const trimmed = String(u).replace(/^\/+/, "")
+  return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://")
+}
+
+/** Adiciona cache-busting ?t=timestamp sem quebrar query string existente */
+export function cacheBust(u?: string | null, seed: number = Date.now()): string | null {
+  if (!u) return null
+  const sep = u.includes("?") ? "&" : "?"
+  return `${u}${sep}t=${seed}`
 }
 
 /* ============================ Axios ============================ */
@@ -201,6 +222,19 @@ export async function ensureMentorado(usuarioId: string) {
   }
 }
 
+/* ============================ Avatar ============================ */
+export async function uploadUsuarioAvatar(usuarioId: string, file: File) {
+  const form = new FormData()
+  form.append("file", file)
+  const { data } = await postForm<{ sucesso: boolean; url: string }>(
+    `/usuarios/${usuarioId}/avatar`,
+    form,
+  )
+  ;(data as any).resolvedUrl = resolveImageUrl(data?.url || null)
+  ;(data as any).bustedUrl = cacheBust((data as any).resolvedUrl || data?.url || null)
+  return data
+}
+
 /* ============================ Currículo ============================ */
 export async function uploadCurriculo(mentoradoId: string, file: File) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório")
@@ -225,6 +259,50 @@ export async function downloadCurriculo(mentoradoId: string) {
   triggerBrowserDownload(data, name)
 }
 
+export type MentoradoCurriculo = {
+  filename: string
+  originalName: string
+  mime: string
+  size: number
+  url: string
+  savedAt: string
+}
+
+export async function uploadCurriculos(mentoradoId: string, files: File[]) {
+  if (!mentoradoId) throw new Error("mentoradoId obrigatório")
+  if (!files?.length) throw new Error("Nenhum arquivo selecionado")
+  const form = new FormData()
+  for (const f of files) form.append("files", f)
+  const { data } = await postForm(`/mentorados/${mentoradoId}/curriculos`, form)
+  return data as { sucesso: boolean; total: number; arquivos: MentoradoCurriculo[] }
+}
+
+export async function listMentoradoCurriculos(mentoradoId: string) {
+  if (!mentoradoId) throw new Error("mentoradoId obrigatório")
+  const { data } = await api.get<{ total: number; arquivos: MentoradoCurriculo[] }>(
+    `/mentorados/${mentoradoId}/curriculo/list`,
+  )
+  return data
+}
+
+export async function downloadCurriculoByName(mentoradoId: string, filename: string) {
+  if (!mentoradoId) throw new Error("mentoradoId obrigatório")
+  if (!filename) throw new Error("filename obrigatório")
+  const url = apiUrl(`/mentorados/${mentoradoId}/curriculo/by-name/${encodeURIComponent(filename)}`)
+  const { data, headers } = await api.get(url, { responseType: "blob" })
+  const name = ((): string => {
+    const cd = headers?.["content-disposition"] || headers?.["Content-Disposition"]
+    if (typeof cd === "string") {
+      const star = /filename\*=(?:UTF-8''|)([^;]+)/i.exec(cd)
+      if (star?.[1]) return decodeURIComponent(star[1].replace(/^"+|"+$/g, ""))
+      const plain = /filename="?([^";]+)"?/i.exec(cd)
+      if (plain?.[1]) return decodeURIComponent(plain[1])
+    }
+    return filename
+  })()
+  triggerBrowserDownload(data, name)
+}
+
 /* ============================ Áudio ============================ */
 export type MentoradoAudio = {
   filename: string
@@ -238,13 +316,19 @@ export async function uploadMentoradoAudio(
   mentoradoId: string,
   blob: Blob | File,
 ) {
+  if (!mentoradoId) throw new Error("mentoradoId obrigatório")
   const form = new FormData()
-  const name =
-    (blob as File)?.name ||
-    `audio-${Date.now()}.${
-      (blob.type?.split("/")[1] || "webm").replace(/[^a-z0-9]/gi, "") || "webm"
-    }`
-  form.append("audio", blob, name)
+
+  // Garante nome/extensão compatível com o backend (mp3|wav), preferindo WAV.
+  const lower = (blob.type || "").toLowerCase()
+  let ext = ".wav"
+  if (lower.includes("mpeg") || lower.includes("mp3")) ext = ".mp3"
+  const safeName =
+    (blob as File)?.name?.toLowerCase().match(/\.(mp3|wav)$/)
+      ? (blob as File).name
+      : `audio-${Date.now()}${ext}`
+
+  form.append("audio", blob, safeName)
   const { data } = await postForm<{ ok: boolean; audio: MentoradoAudio }>(
     `/mentorados/${mentoradoId}/audios`,
     form,
@@ -269,7 +353,7 @@ export async function fetchAudioBlob(
     `/mentorados/${mentoradoId}/audios/${encodeURIComponent(audio.filename)}`,
   )
   const { data, headers } = await api.get(url, { responseType: "blob" })
-  const name = pickFilenameFromHeaders(headers, audio.filename || "audio.webm")
+  const name = pickFilenameFromHeaders(headers, audio.filename || "audio.wav")
   return { blob: data as Blob, filename: name }
 }
 
@@ -293,7 +377,6 @@ export type VagaLink = {
   ativo: boolean
 }
 
-/** Lista SOMENTE os links do usuário autenticado (scoped via JWT) */
 export async function listMyVagaLinks(pagina = 1, quantidade = 10) {
   const { data } = await api.get<{
     itens: VagaLink[]
@@ -312,7 +395,6 @@ export type CreateVagaLinkPayload = {
   ativo?: boolean
 }
 
-/** Cria link para o usuário autenticado (backend seta owner via JWT) */
 export async function createMyVagaLink(payload: CreateVagaLinkPayload) {
   const { data } = await api.post<VagaLink>(`/vagas-links`, payload)
   return data
@@ -355,11 +437,11 @@ export type SsiResultado = {
   id: string
   usuarioId: string | null
   metrica: SsiMetrica
-  dataReferencia: string // 'YYYY-MM-DD'
-  valor: string // numeric string
+  dataReferencia: string
+  valor: string
   unidade: SsiUnidade
   status: SsiStatus
-  metaAplicada: string // numeric string
+  metaAplicada: string
   criadoEm: string
   atualizadoEm: string
 }
@@ -367,7 +449,7 @@ export type SsiResultado = {
 export type SsiMeta = {
   id: string
   metrica: SsiMetrica
-  valorMeta: string // numeric string
+  valorMeta: string
   unidade: SsiUnidade
   criadoEm: string
   atualizadoEm: string
@@ -445,32 +527,123 @@ export async function upsertSsiMetasBatch(
 }
 
 /* ============================ SSI: Semanas & Consulta por semana ============================ */
-export type SsiWeekRef = { dataReferencia: string; totalMetricas: number };
+export type SsiWeekRef = { dataReferencia: string; totalMetricas: number }
 
 export type SsiSemanaPayload = {
-  semana: string; // segunda-feira normalizada
+  semana: string
   itens: Array<{
-    id: string;
-    usuarioId: string | null;
-    metrica: SsiMetrica;
-    dataReferencia: string;
-    valor: string;
-    unidade: SsiUnidade;
-    status: "OTIMO" | "BOM" | "RUIM";
-    metaAplicada: string;
-    criadoEm: string;
-    atualizadoEm: string;
-  }>;
-};
+    id: string
+    usuarioId: string | null
+    metrica: SsiMetrica
+    dataReferencia: string
+    valor: string
+    unidade: SsiUnidade
+    status: "OTIMO" | "BOM" | "RUIM"
+    metaAplicada: string
+    criadoEm: string
+    atualizadoEm: string
+  }>
+}
 
 export async function listSsiWeeks() {
-  const { data } = await api.get<SsiWeekRef[]>("/ssi/semanas");
-  return data;
+  const { data } = await api.get<SsiWeekRef[]>("/ssi/semanas")
+  return data
 }
 
 export async function getSsiByWeek(date: string) {
   const { data } = await api.get<SsiSemanaPayload>("/ssi/por-semana", {
     params: { data: date },
-  });
+  })
+  return data
+}
+
+/* ============================ SSI: Dashboard por semanas ============================ */
+export type SsiDashboardTabela = {
+  semanas: string[]; // ex.: ['2025-09-01','2025-09-08',...]
+  itens: Array<{
+    metrica: SsiMetrica;
+    unidade: SsiUnidade;
+    valores: Record<string, number>; // chave = semana (data), valor = número
+  }>;
+};
+
+export async function getSsiDashboardTabela(params?: { dataInicio?: string; dataFim?: string }) {
+  const { data } = await api.get<SsiDashboardTabela>('/ssi/dashboard-tabela', { params });
   return data;
+}
+
+/* ============================ Usuário: Update / Delete ============================ */
+export type PutUsuarioDto = {
+  nome?: string
+  email?: string
+  telefone?: string
+  novaSenha?: string
+}
+
+export async function updateUsuario(id: string, dto: PutUsuarioDto) {
+  const { data } = await api.put(`/usuarios/${id}`, dto)
+  return data
+}
+
+export async function deleteUsuario(id: string) {
+  const { data } = await api.delete<{ id: string; sucesso: boolean }>(`/usuarios/${id}`)
+  return data
+}
+
+/* ============================ Vigências ============================ */
+export type VigenciaDto = {
+  id: string
+  usuarioId: string
+  inicio: string
+  fim: string | null
+}
+
+export async function listVigenciasPorUsuario(usuarioId: string) {
+  const { data } = await api.get<VigenciaDto[]>(`/vigencias/${usuarioId}`)
+  return data
+}
+
+export async function updateVigencia(id: string, dto: { inicio?: string; fim?: string | null }) {
+  const { data } = await api.put(`/vigencias/${id}`, dto)
+  return data
+}
+
+export async function toggleVigencia(usuarioId: string, ativo: boolean) {
+  const { data } = await api.patch<{ status: "ativada" | "desativada" }>(
+    `/vigencias/${usuarioId}/switch`,
+    { ativo }
+  )
+  return data
+}
+
+/* ============================ Mentorado: Update ============================ */
+export type PutMentoradoDto = {
+  mentorId?: string | null
+  tipo?: "Executive" | "First Class"
+  rg?: string
+  cpf?: string
+  nomePai?: string
+  nomeMae?: string
+  dataNascimento?: string
+  rua?: string
+  numero?: string
+  complemento?: string
+  cep?: string
+  cargoObjetivo?: string
+  pretensaoClt?: number
+  pretensaoPj?: number
+  linkedin?: string
+}
+
+export async function updateMentorado(id: string, dto: PutMentoradoDto) {
+  const { data } = await api.put(`/mentorados/${id}`, dto)
+  return data
+}
+
+/* ============================ Helpers JWT (já usados nas páginas) ============================ */
+export function pickUserIdFromJwt(jwt?: string | null): string | null {
+  const p = decodeJwt<any>(jwt)
+  const candidates = [p?.sub, p?.id, p?.userId, p?.uid, p?.usuarioId, p?.user_id]
+  const found = candidates.find((v) => typeof v === "string" && v.trim().length > 0)
+  return found ? String(found) : null
 }

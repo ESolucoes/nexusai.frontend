@@ -42,6 +42,16 @@ export type MentoresTableProps = {
   refreshKey?: number
 }
 
+/** 🔧 Normaliza URLs relativas vindas do backend para absolutas (baseada no api.baseURL) */
+function resolveImageUrl(u?: string | null): string | null {
+  if (!u) return null
+  if (/^https?:\/\//i.test(u)) return u
+  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "")
+  const path = String(u).replace(/^\/+/, "")
+  if (!base) return `/${path}`
+  return `${base}/${path}`
+}
+
 function useDebounce<T>(value: T, ms = 500) {
   const [v, setV] = useState(value)
   useEffect(() => {
@@ -126,6 +136,8 @@ export default function MentoresTable({ refreshKey }: MentoresTableProps) {
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({})
   const [vigenciaMap, setVigenciaMap] = useState<Record<string, boolean>>({})
   const [vigStatusLoading, setVigStatusLoading] = useState(false)
+  /** avatar por usuário (mentor) */
+  const [mentorAvatarMap, setMentorAvatarMap] = useState<Record<string, string>>({})
 
   const dBusca = useDebounce(busca, 400)
   const dPage = useDebounce(page, 100)
@@ -150,6 +162,7 @@ export default function MentoresTable({ refreshKey }: MentoresTableProps) {
     setLoading(true)
     setError(null)
     setVigenciaMap({})
+    setMentorAvatarMap({})
 
     api
       .get<MentoresResponse>(`/usuarios/mentores?${query}`, { signal: controller.signal })
@@ -193,6 +206,35 @@ export default function MentoresTable({ refreshKey }: MentoresTableProps) {
         setVigenciaMap(next)
       } finally {
         if (!canceled) setVigStatusLoading(false)
+      }
+    })()
+    return () => { canceled = true }
+  }, [data?.items])
+
+  /** 🔄 Carrega os avatares reais dos mentores (sem tirar nada do código original) */
+  useEffect(() => {
+    const lista = data?.items ?? []
+    if (lista.length === 0) return
+    let canceled = false
+    ;(async () => {
+      try {
+        const res = await mapWithConcurrency(lista, 6, async (m) => {
+          try {
+            const { data: u } = await api.get<{ avatarUrl?: string | null; foto?: string | null }>(`/usuarios/${m.usuarioId}`)
+            const resolved = resolveImageUrl(u?.avatarUrl ?? u?.foto ?? null)
+            return { id: m.usuarioId, url: resolved || "" }
+          } catch {
+            return { id: m.usuarioId, url: "" }
+          }
+        })
+        if (canceled) return
+        const map: Record<string, string> = {}
+        for (const r of res) {
+          if (r.url) map[r.id] = r.url
+        }
+        setMentorAvatarMap(map)
+      } catch {
+        if (!canceled) setMentorAvatarMap({})
       }
     })()
     return () => { canceled = true }
@@ -280,6 +322,7 @@ export default function MentoresTable({ refreshKey }: MentoresTableProps) {
               const ativo = resolveAtivo(m, vigenciaMap[usuarioId])
               const isRowLoading = !!rowLoading[usuarioId]
               const isSelf = currentUserId && String(currentUserId) === String(usuarioId)
+              const avatarSrc = mentorAvatarMap[usuarioId] || "/images/avatar.png"
 
               return (
                 <tr
@@ -290,7 +333,21 @@ export default function MentoresTable({ refreshKey }: MentoresTableProps) {
                   title={!isSelf ? "Abrir perfil do mentor" : "Seu usuário (perfil próprio)"}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
-                    <img src="/images/avatar.png" alt={m.nome} className="mentor-avatar" draggable={false} />
+                    <img
+                      src={avatarSrc}
+                      alt={m.nome}
+                      className="mentor-avatar"
+                      draggable={false}
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement
+                        if (
+                          img.src !== window.location.origin + "/images/avatar.png" &&
+                          img.src !== "/images/avatar.png"
+                        ) {
+                          img.src = "/images/avatar.png"
+                        }
+                      }}
+                    />
                   </td>
                   <td title={m.nome}>
                     <span className={`tipo-badge ${m.tipo === "admin" ? "admin" : "normal"}`}>

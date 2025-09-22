@@ -35,6 +35,14 @@ export default function MentoradoHeader() {
         >
           Agentes
         </NavLink>
+
+        {/* Novo: Perfil do Mentorado */}
+        <NavLink
+          to="/dashboard/mentorado/perfil"
+          className={({ isActive }) => (isActive ? "active" : "")}
+        >
+          Perfil
+        </NavLink>
       </nav>
 
       <div className="app-sidebar-footer">

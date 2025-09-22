@@ -6,6 +6,7 @@ export default function Header() {
 
   const isDashboardActive = pathname.startsWith("/dashboard/mentores")
   const isAgentesActive = pathname.startsWith("/mentores/agentes")
+  const isPerfilActive = pathname.startsWith("/mentores/perfil")
 
   return (
     <aside className="app-sidebar">
@@ -21,6 +22,11 @@ export default function Header() {
 
         <Link className={isAgentesActive ? "active" : ""} to="/mentores/agentes">
           Agentes
+        </Link>
+
+        {/* Novo: Perfil do Mentor */}
+        <Link className={isPerfilActive ? "active" : ""} to="/mentores/perfil">
+          Perfil
         </Link>
       </nav>
 

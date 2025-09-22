@@ -1,7 +1,7 @@
 // frontend/src/pages/mentorados/HomePage.tsx
 import { useEffect, useRef, useState } from "react"
 import MentoradoHeader from "../../components/layout/MentoradoHeader"
-import "../../styles/mentorados/mapeamento.css" 
+import "../../styles/mentorados/mapeamento.css"
 import {
   getToken,
   uploadCurriculo,
@@ -12,12 +12,11 @@ import {
   downloadMentoradoAudio,
   fetchAudioBlob,
   downloadCurriculo,
+  type MentoradoAudio,
 } from "../../lib/api"
-import type { MentoradoAudio } from "../../lib/api"
 
 // Tabela de Vagas
 import VagasTable from "../../components/mentorados/VagasTable"
-// REMOVIDO: import SsiMetasVertical from "../../components/mentorados/SsiMetasVertical"
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt)
@@ -28,7 +27,43 @@ function pickUserIdFromJwt(jwt?: string | null): string | null {
   return found ? String(found) : null
 }
 
-/* ============================ MODAL DE ÁUDIO ============================ */
+/* ============================ Utils: WAV Encoder ============================ */
+function encodeWAV(samples: Float32Array, sampleRate: number): Blob {
+  // PCM 16-bit mono
+  const buffer = new ArrayBuffer(44 + samples.length * 2)
+  const view = new DataView(buffer)
+
+  function writeString(offset: number, str: string) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+  }
+
+  function floatTo16BitPCM(output: DataView, offset: number, input: Float32Array) {
+    let pos = offset
+    for (let i = 0; i < input.length; i++, pos += 2) {
+      let s = Math.max(-1, Math.min(1, input[i]))
+      output.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+    }
+  }
+
+  writeString(0, "RIFF")
+  view.setUint32(4, 36 + samples.length * 2, true)
+  writeString(8, "WAVE")
+  writeString(12, "fmt ")
+  view.setUint32(16, 16, true) // PCM
+  view.setUint16(20, 1, true) // PCM
+  view.setUint16(22, 1, true) // mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true) // byte rate
+  view.setUint16(32, 2, true) // block align
+  view.setUint16(34, 16, true) // bits per sample
+  writeString(36, "data")
+  view.setUint32(40, samples.length * 2, true)
+
+  floatTo16BitPCM(view, 44, samples)
+  return new Blob([view], { type: "audio/wav" })
+}
+
+/* ============================ MODAL DE ÁUDIO (gera WAV) ============================ */
 function AudioRecorderModal(props: {
   open: boolean
   onClose: () => void
@@ -42,9 +77,12 @@ function AudioRecorderModal(props: {
   const [mics, setMics] = useState<MediaDeviceInfo[]>([])
   const [selectedMic, setSelectedMic] = useState<string>("")
 
-  const mediaStreamRef = useRef<MediaStream | null>(null)
-  const mediaRecRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const procRef = useRef<ScriptProcessorNode | null>(null)
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const chunksRef = useRef<Float32Array[]>([])
+  const sampleRateRef = useRef<number>(44100)
 
   useEffect(() => {
     if (open) {
@@ -68,43 +106,79 @@ function AudioRecorderModal(props: {
       })()
     }
     return () => {
-      try { mediaRecRef.current?.stop() } catch {}
-      mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
-      mediaRecRef.current = null
-      mediaStreamRef.current = null
-      chunksRef.current = []
-      if (blobUrl) URL.revokeObjectURL(blobUrl)
-      setBlobUrl(null)
-      setBlob(null)
-      setRecording(false)
+      cleanup()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  function cleanup() {
+    try { procRef.current?.disconnect() } catch {}
+    try { sourceRef.current?.disconnect() } catch {}
+    try { ctxRef.current?.close() } catch {}
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    ctxRef.current = null
+    procRef.current = null
+    sourceRef.current = null
+    streamRef.current = null
+    chunksRef.current = []
+    if (blobUrl) URL.revokeObjectURL(blobUrl)
+    setBlobUrl(null)
+    setBlob(null)
+    setRecording(false)
+  }
 
   async function start() {
     if (!navigator?.mediaDevices?.getUserMedia)
       return alert("Gravação não suportada neste navegador.")
+
     const constraints: MediaStreamConstraints = selectedMic
       ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints })
       : { audio: true }
+
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
-    mediaStreamRef.current = stream
-    const rec = new MediaRecorder(stream, { mimeType: "audio/webm" })
+    streamRef.current = stream
+
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    ctxRef.current = ctx
+    sampleRateRef.current = ctx.sampleRate
+
+    const source = ctx.createMediaStreamSource(stream)
+    sourceRef.current = source
+
+    const proc = ctx.createScriptProcessor(4096, 1, 1)
+    procRef.current = proc
+
     chunksRef.current = []
-    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-    rec.onstop = () => {
-      const b = new Blob(chunksRef.current, { type: "audio/webm" })
-      setBlob(b)
-      setBlobUrl(URL.createObjectURL(b))
+    proc.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0)
+      // copia o chunk pra evitar GC do buffer
+      chunksRef.current.push(new Float32Array(input))
     }
-    mediaRecRef.current = rec
-    rec.start()
+
+    source.connect(proc)
+    proc.connect(ctx.destination)
     setRecording(true)
   }
+
   function stop() {
-    try { mediaRecRef.current?.stop() } catch {}
-    mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
     setRecording(false)
+    // concatena e gera WAV
+    const bufs = chunksRef.current
+    const length = bufs.reduce((acc, b) => acc + b.length, 0)
+    const mono = new Float32Array(length)
+    let offset = 0
+    for (const b of bufs) {
+      mono.set(b, offset)
+      offset += b.length
+    }
+    const wav = encodeWAV(mono, sampleRateRef.current || 44100)
+    setBlob(wav)
+    const url = URL.createObjectURL(wav)
+    if (blobUrl) URL.revokeObjectURL(blobUrl)
+    setBlobUrl(url)
+    cleanup()
   }
+
   async function save() {
     if (!blob) return
     try {
@@ -190,10 +264,10 @@ function AudioRecorderModal(props: {
             <div style={{ marginTop: 6 }}>
               <a
                 href={blobUrl}
-                download={`gravacao-${Date.now()}.webm`}
+                download={`gravacao-${Date.now()}.wav`}
                 className="cv-download"
               >
-                Baixar prévia
+                Baixar prévia (WAV)
               </a>
             </div>
           </>
@@ -444,7 +518,7 @@ export default function HomePage() {
             />
           </div>
 
-          {/* ======== CARD DE ÁUDIO (AGORA EM GRID, SEM ABSOLUTE) ======== */}
+          {/* ======== CARD DE ÁUDIO (GRID) ======== */}
           <div className="mentorados-card mentorados-card--audio">
             <div
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}
@@ -492,8 +566,6 @@ export default function HomePage() {
               )}
             </div>
           </div>
-
-          {/* REMOVIDO: <SsiMetasVertical /> */}
 
           {/* ======== Tabela de Vagas ======== */}
           <VagasTable pageSize={10} />

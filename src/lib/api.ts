@@ -265,9 +265,9 @@ export type CurriculoUploadResult = {
 };
 
 /**
- * Envia um único arquivo de currículo. Usa a rota de múltiplos no backend
- * para garantir consistência, mas retorna apenas a informação do primeiro arquivo.
- */
+ * Envia um único arquivo de currículo. Usa a rota de múltiplos no backend
+ * para garantir consistência, mas retorna apenas a informação do primeiro arquivo.
+ */
 export async function uploadCurriculo(
   mentoradoId: string,
   file: File
@@ -275,7 +275,7 @@ export async function uploadCurriculo(
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   
   const form = new FormData();
-  // 💡 Envia o arquivo único sob o campo esperado pelo backend de múltiplos
+  // O campo 'files' está correto para a rota de múltiplos
   form.append("files", file); 
   
   const { data } = await postForm(
@@ -300,8 +300,8 @@ export async function uploadCurriculo(
 
 
 /**
- * Envia múltiplos arquivos de currículo.
- */
+ * Envia múltiplos arquivos de currículo.
+ */
 export async function uploadCurriculos(mentoradoId: string, files: File[]) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   if (!files?.length) throw new Error("Nenhum arquivo selecionado");
@@ -323,9 +323,9 @@ export async function uploadCurriculos(mentoradoId: string, files: File[]) {
 
 
 /**
- * 🎯 FUNÇÃO CHAVE PARA O FRONTEND: Busca as informações do último currículo salvo (GET /latest-info).
- * É obrigatório chamar esta função ao carregar a página (F5) para exibir o arquivo salvo.
- */
+ * 🎯 FUNÇÃO CHAVE PARA O FRONTEND: Busca as informações do último currículo salvo (GET /latest-info).
+ * 🛑 CORRIGIDO: Agora resolve a URL relativa para absoluta.
+ */
 export async function getLatestCurriculoInfo(
   mentoradoId: string
 ): Promise<MentoradoCurriculo | null> {
@@ -334,6 +334,14 @@ export async function getLatestCurriculoInfo(
     const { data } = await api.get<MentoradoCurriculo>(
       `/mentorados/${mentoradoId}/curriculo/latest-info`
     );
+    
+    // 🛑 CORREÇÃO APLICADA AQUI!
+    // O backend retorna '/mentorado/...', a função resolveImageUrl
+    // adiciona 'http://api-url.com' na frente.
+    if (data && data.url) {
+        (data as any).url = resolveImageUrl(data.url);
+    }
+    
     return data;
   } catch (error: any) {
     // Retorna null se for 404, indicando que não há currículo. Lança outros erros.
@@ -346,8 +354,8 @@ export async function getLatestCurriculoInfo(
 
 
 /**
- * Baixa o currículo mais recente (sem passar o nome do arquivo).
- */
+ * Baixa o currículo mais recente (sem passar o nome do arquivo).
+ */
 export async function downloadCurriculo(mentoradoId: string) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   const url = apiUrl(`/mentorados/${mentoradoId}/curriculo`);
@@ -358,8 +366,8 @@ export async function downloadCurriculo(mentoradoId: string) {
 
 
 /**
- * Lista todos os currículos (se o backend salvar histórico).
- */
+ * Lista todos os currículos (se o backend salvar histórico).
+ */
 export async function listMentoradoCurriculos(mentoradoId: string) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   const { data } = await api.get<{
@@ -370,8 +378,8 @@ export async function listMentoradoCurriculos(mentoradoId: string) {
 }
 
 /**
- * Baixa um currículo específico pelo seu nome de arquivo.
- */
+ * Baixa um currículo específico pelo seu nome de arquivo.
+ */
 export async function downloadCurriculoByName(
   mentoradoId: string,
   filename: string
@@ -386,7 +394,6 @@ export async function downloadCurriculoByName(
   const { data, headers } = await api.get(url, { responseType: "blob" });
   
   const name = ((): string => {
-    // [Lógica de extração de nome do header, mantida]
     const cd = headers?.["content-disposition"] || headers?.["Content-Disposition"];
     if (typeof cd === "string") {
       const star = /filename\*=(?:UTF-8''|)([^;]+)/i.exec(cd);

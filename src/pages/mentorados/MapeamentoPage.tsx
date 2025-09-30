@@ -13,6 +13,9 @@ import {
   fetchAudioBlob,
   downloadCurriculo,
   type MentoradoAudio,
+  // 🛑 CORREÇÃO: Importar as novas funções e tipos do API
+  getLatestCurriculoInfo,
+  type MentoradoCurriculo,
 } from "../../lib/api"
 
 // Tabela de Vagas
@@ -289,8 +292,9 @@ export default function MapeamentoPage() {
     avatarUrl?: string | null
     accountType: "Executive" | "First Class" | null
     mentoradoId?: string | null
-    curriculoUrl?: string | null
-    curriculoNome?: string | null
+    // 🛑 REMOVIDOS daqui, serão gerenciados no estado 'curriculoInfo'
+    // curriculoUrl?: string | null
+    // curriculoNome?: string | null
   }>({
     id: undefined,
     nome: "Carregando...",
@@ -298,9 +302,10 @@ export default function MapeamentoPage() {
     avatarUrl: null,
     accountType: null,
     mentoradoId: null,
-    curriculoUrl: null,
-    curriculoNome: null,
   })
+
+  // 🛑 CORREÇÃO: Novo estado dedicado ao currículo
+  const [curriculoInfo, setCurriculoInfo] = useState<MentoradoCurriculo | null>(null)
 
   const [audios, setAudios] = useState<MentoradoAudio[]>([])
   const [audioModalOpen, setAudioModalOpen] = useState(false)
@@ -333,8 +338,7 @@ export default function MapeamentoPage() {
           avatarUrl: data.avatarUrl ?? null,
           accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
           mentoradoId,
-          curriculoUrl: data.mentorado?.curriculo?.url ?? null,
-          curriculoNome: data.mentorado?.curriculo?.filename ?? null,
+          // Remove as propriedades antigas do currículo
         })
 
         if (mentoradoId) {
@@ -350,12 +354,28 @@ export default function MapeamentoPage() {
           avatarUrl: null,
           accountType: null,
           mentoradoId: null,
-          curriculoUrl: null,
-          curriculoNome: null,
         }))
       }
     })()
   }, [])
+  
+  // 🛑 CORREÇÃO: Novo useEffect para carregar o último currículo (Resolve o F5)
+  useEffect(() => {
+    const mentoradoId = usuario.mentoradoId
+    if (!mentoradoId) return
+
+    ;(async () => {
+      try {
+        // Chama a função que usa o novo endpoint
+        const info = await getLatestCurriculoInfo(mentoradoId)
+        setCurriculoInfo(info)
+      } catch (err) {
+        console.error("[MapeamentoPage] Falha ao carregar info do currículo:", err)
+        setCurriculoInfo(null)
+      }
+    })()
+  }, [usuario.mentoradoId]) // Depende do mentoradoId ser carregado (vindo do primeiro useEffect)
+
 
   useEffect(() => {
     ;(async () => {
@@ -393,12 +413,18 @@ export default function MapeamentoPage() {
       return
     }
     try {
+      // Recebemos o resultado simplificado
       const res = await uploadCurriculo(usuario.mentoradoId, file)
-      setUsuario((prev) => ({
-        ...prev,
-        curriculoUrl: res?.url ?? null,
-        curriculoNome: res?.filename ?? file.name,
-      }))
+      
+      // 🛑 CORREÇÃO: Montar o objeto completo e atualizar o estado
+      setCurriculoInfo({
+        filename: res.storageKey,
+        originalName: res.filename, // O nome original do arquivo
+        mime: res.mime,
+        size: res.tamanho,
+        url: res.url ?? "", // URL ABSOLUTA corrigida pelo seu API service
+        savedAt: new Date().toISOString(), // Usamos uma data temporária
+      })
     } catch (err) {
       console.error("[MapeamentoPage] upload currículo falhou:", err)
       alert("Falha no upload do currículo.")
@@ -410,7 +436,8 @@ export default function MapeamentoPage() {
   async function handleCvDownload() {
     if (!usuario.mentoradoId) return
     try {
-      await downloadCurriculo(usuario.mentoradoId)
+      // Não precisamos da URL, apenas o ID
+      await downloadCurriculo(usuario.mentoradoId) 
     } catch (err: any) {
       console.error(
         "[MapeamentoPage] download currículo falhou:",
@@ -433,7 +460,8 @@ export default function MapeamentoPage() {
     }
   }
 
-  const hasCv = Boolean(usuario.curriculoNome)
+  // 🛑 CORREÇÃO: Usar o novo estado `curriculoInfo` para determinar se há CV
+  const hasCv = Boolean(curriculoInfo?.originalName)
   const ultimoAudio = audios?.[0] || null
 
   return (
@@ -471,7 +499,8 @@ export default function MapeamentoPage() {
                   <div>
                     <h3>Currículo</h3>
                     <p className="cv-file">
-                      {usuario.curriculoNome}
+                      {/* 🛑 CORREÇÃO: Usa o nome do arquivo no novo estado */}
+                      {curriculoInfo?.originalName}
                       <button
                         onClick={handleCvDownload}
                         className="cv-download"

@@ -1,8 +1,8 @@
 // frontend/src/pages/mentores/MentoresMentoradoHomePage.tsx
-import { useEffect, useRef, useState } from "react"
-import { useLocation, useSearchParams } from "react-router-dom"
-import Header from "../../components/layout/Header"
-import "../../styles/mentorados/home.css"
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
+import Header from "../../components/layout/Header";
+import "../../styles/mentorados/home.css";
 import {
   api,
   getUsuarioById,
@@ -18,47 +18,52 @@ import {
   downloadCurriculoByName,    // por nome (novo)
   type MentoradoCurriculo,
   type MentoradoAudio,
-} from "../../lib/api"
+} from "../../lib/api";
 
-// Tabela de Vagas
-import VagasTable from "../../components/mentorados/VagasTable"
-// Metas do SSI (vertical) — mesma página dos mentorados
-import SsiMetasVertical from "../../components/mentorados/SsiDashboardTabela"
+// Tabela de Vagas (mantida)
+import VagasTable from "../../components/mentorados/VagasTable";
+
+// Tabela única do SSI (substitui o antigo SsiDashboardTabela)
+import MentoradoSsiTabela from "../../components/mentorados/MentoradoSsiTabela";
+
+// Cronograma (8 semanas) + Rotina Fixa
+import CronogramaSemanasTable from "../../components/mentorados/CronogramaSemanasTable";
+import RotinaSemanalFixa from "../../components/mentorados/RotinaSemanalFixa";
 
 /** Normaliza URL (caso backend retorne relativa) */
 function resolveImageUrl(u?: string | null): string | null {
-  if (!u) return null
-  if (/^https?:\/\//i.test(u)) return u
-  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "")
-  const path = String(u).replace(/^\/+/, "")
-  if (!base) return `/${path}`
-  return `${base}/${path}`
+  if (!u) return null;
+  if (/^https?:\/\//i.test(u)) return u;
+  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "");
+  const path = String(u).replace(/^\/+/, "");
+  if (!base) return `/${path}`;
+  return `${base}/${path}`;
 }
 
 /** Adiciona cache-busting pra refletir avatar atualizado na hora */
 function cacheBust(u?: string | null): string | null {
-  if (!u) return u ?? null
-  const sep = u.includes("?") ? "&" : "?"
-  return `${u}${sep}t=${Date.now()}`
+  if (!u) return u ?? null;
+  const sep = u.includes("?") ? "&" : "?";
+  return `${u}${sep}t=${Date.now()}`;
 }
 
 /* ============================ MODAL DE ÁUDIO ============================ */
 function AudioRecorderModal(props: {
-  open: boolean
-  onClose: () => void
-  mentoradoId: string
-  onSaved?: (audio: MentoradoAudio) => void
+  open: boolean;
+  onClose: () => void;
+  mentoradoId: string;
+  onSaved?: (audio: MentoradoAudio) => void;
 }) {
-  const { open, onClose, mentoradoId, onSaved } = props
-  const [recording, setRecording] = useState(false)
-  const [blobUrl, setBlobUrl] = useState<string | null>(null)
-  const [blob, setBlob] = useState<Blob | null>(null)
-  const [mics, setMics] = useState<MediaDeviceInfo[]>([])
-  const [selectedMic, setSelectedMic] = useState<string>("")
+  const { open, onClose, mentoradoId, onSaved } = props;
+  const [recording, setRecording] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMic, setSelectedMic] = useState<string>("");
 
-  const mediaStreamRef = useRef<MediaStream | null>(null)
-  const mediaRecRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   // Descobre o melhor mime para gravar (tenta WAV, senão fallback)
   function pickBestMime(): string | undefined {
@@ -70,102 +75,108 @@ function AudioRecorderModal(props: {
       "audio/mp4",
       "audio/ogg;codecs=opus",
       "audio/ogg",
-    ]
+    ];
     const isSup = (t: string) =>
       typeof (window as any).MediaRecorder !== "undefined" &&
       typeof MediaRecorder.isTypeSupported === "function" &&
-      MediaRecorder.isTypeSupported(t)
-    return candidates.find(isSup) || undefined
+      MediaRecorder.isTypeSupported(t);
+    return candidates.find(isSup) || undefined;
   }
 
   useEffect(() => {
     if (open) {
-      ;(async () => {
+      (async () => {
         try {
-          const temp = await navigator.mediaDevices.getUserMedia({ audio: true })
-          temp.getTracks().forEach((t) => t.stop())
-          const devs = await navigator.mediaDevices.enumerateDevices()
-          const inputs = devs.filter((d) => d.kind === "audioinput")
-          setMics(inputs)
-          if (!selectedMic && inputs[0]) setSelectedMic(inputs[0].deviceId)
+          const temp = await navigator.mediaDevices.getUserMedia({ audio: true });
+          temp.getTracks().forEach((t) => t.stop());
+          const devs = await navigator.mediaDevices.enumerateDevices();
+          const inputs = devs.filter((d) => d.kind === "audioinput");
+          setMics(inputs);
+          if (!selectedMic && inputs[0]) setSelectedMic(inputs[0].deviceId);
           navigator.mediaDevices.ondevicechange = async () => {
-            const ds = await navigator.mediaDevices.enumerateDevices()
-            const ins = ds.filter((d) => d.kind === "audioinput")
-            setMics(ins)
+            const ds = await navigator.mediaDevices.enumerateDevices();
+            const ins = ds.filter((d) => d.kind === "audioinput");
+            setMics(ins);
             if (ins.length && !ins.find((d) => d.deviceId === selectedMic)) {
-              setSelectedMic(ins[0].deviceId)
+              setSelectedMic(ins[0].deviceId);
             }
-          }
+          };
         } catch {
           // ignore
         }
-      })()
+      })();
     }
     return () => {
-      try { mediaRecRef.current?.stop() } catch {}
-      mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
-      mediaRecRef.current = null
-      mediaStreamRef.current = null
-      chunksRef.current = []
-      if (blobUrl) URL.revokeObjectURL(blobUrl)
-      setBlobUrl(null)
-      setBlob(null)
-      setRecording(false)
-    }
-  }, [open])
+      try {
+        mediaRecRef.current?.stop();
+      } catch {}
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      mediaRecRef.current = null;
+      mediaStreamRef.current = null;
+      chunksRef.current = [];
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      setBlobUrl(null);
+      setBlob(null);
+      setRecording(false);
+    };
+  }, [open]);
 
   async function start() {
     if (!navigator?.mediaDevices?.getUserMedia) {
-      alert("Gravação não suportada neste navegador.")
-      return
+      alert("Gravação não suportada neste navegador.");
+      return;
     }
     const constraints: MediaStreamConstraints = selectedMic
       ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints })
-      : { audio: true }
+      : { audio: true };
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints)
-    mediaStreamRef.current = stream
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    mediaStreamRef.current = stream;
 
-    const mimeType = pickBestMime()
-    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
-    chunksRef.current = []
-    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    const mimeType = pickBestMime();
+    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
     rec.onstop = () => {
       // Blob com o mesmo tipo usado pelo MediaRecorder (ou o default do browser)
-      const finalType = rec.mimeType || mimeType || "audio/webm"
-      const b = new Blob(chunksRef.current, { type: finalType })
-      setBlob(b)
-      setBlobUrl(URL.createObjectURL(b))
-    }
-    mediaRecRef.current = rec
-    rec.start()
-    setRecording(true)
+      const finalType = rec.mimeType || mimeType || "audio/webm";
+      const b = new Blob(chunksRef.current, { type: finalType });
+      setBlob(b);
+      setBlobUrl(URL.createObjectURL(b));
+    };
+    mediaRecRef.current = rec;
+    rec.start();
+    setRecording(true);
   }
 
   function stop() {
-    try { mediaRecRef.current?.stop() } catch {}
-    mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
-    setRecording(false)
+    try {
+      mediaRecRef.current?.stop();
+    } catch {}
+    mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+    setRecording(false);
   }
 
   async function save() {
-    if (!blob) return
+    if (!blob) return;
     try {
       // uploadMentoradoAudio já garante nome compatível (.wav/.mp3) com base no tipo
-      const { ok, audio } = await uploadMentoradoAudio(mentoradoId, blob)
-      if (!ok) throw new Error("upload falhou")
-      onSaved?.(audio)
-      onClose()
+      const { ok, audio } = await uploadMentoradoAudio(mentoradoId, blob);
+      if (!ok) throw new Error("upload falhou");
+      onSaved?.(audio);
+      onClose();
     } catch (err: any) {
-      console.error("[Audio] upload falhou:", err?.response?.data ?? err?.message)
+      console.error("[Audio] upload falhou:", err?.response?.data ?? err?.message);
       alert(
         (err?.response?.data?.message as string) ||
-        "Falha ao salvar o áudio. Verifique se o navegador permitiu o microfone."
-      )
+          "Falha ao salvar o áudio. Verifique se o navegador permitiu o microfone."
+      );
     }
   }
 
-  if (!open) return null
+  if (!open) return null;
   return (
     <div
       style={{
@@ -211,9 +222,9 @@ function AudioRecorderModal(props: {
         </div>
 
         <div style={{ display: "flex", gap: 10, margin: "14px 0" }}>
-          {!recording && (<button onClick={start} className="cv-upload-btn">Iniciar Gravação</button>)}
-          {recording && (<button onClick={stop} className="cv-upload-btn">Parar</button>)}
-          {blobUrl && !recording && (<button onClick={save} className="cv-upload-btn">Salvar</button>)}
+          {!recording && <button onClick={start} className="cv-upload-btn">Iniciar Gravação</button>}
+          {recording && <button onClick={stop} className="cv-upload-btn">Parar</button>}
+          {blobUrl && !recording && <button onClick={save} className="cv-upload-btn">Salvar</button>}
           <button onClick={onClose} className="cv-upload-btn">Fechar</button>
         </div>
 
@@ -225,8 +236,11 @@ function AudioRecorderModal(props: {
               <a
                 href={blobUrl}
                 download={`gravacao-${Date.now()}${
-                  (blob?.type || "").toLowerCase().includes("wav") ? ".wav" :
-                  (blob?.type || "").toLowerCase().includes("mpeg") ? ".mp3" : ".webm"
+                  (blob?.type || "").toLowerCase().includes("wav")
+                    ? ".wav"
+                    : (blob?.type || "").toLowerCase().includes("mpeg")
+                    ? ".mp3"
+                    : ".webm"
                 }`}
                 className="cv-download"
               >
@@ -239,25 +253,25 @@ function AudioRecorderModal(props: {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 /* ============================ PÁGINA ============================ */
 export default function MentoresMentoradoHomePage() {
-  const [search] = useSearchParams()
-  const location = useLocation() as any
+  const [search] = useSearchParams();
+  const location = useLocation() as any;
 
   // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
-  const usuarioIdParam = (search.get("id") || location?.state?.usuarioId || "").trim()
-  const mentoradoIdParam = (search.get("mentoradoId") || location?.state?.mentoradoId || "").trim()
+  const usuarioIdParam = (search.get("id") || location?.state?.usuarioId || "").trim();
+  const mentoradoIdParam = (search.get("mentoradoId") || location?.state?.mentoradoId || "").trim();
 
   const [usuario, setUsuario] = useState<{
-    id?: string
-    nome: string
-    email: string
-    avatarUrl?: string | null
-    accountType: "Executive" | "First Class" | null
-    mentoradoId?: string | null
+    id?: string;
+    nome: string;
+    email: string;
+    avatarUrl?: string | null;
+    accountType: "Executive" | "First Class" | null;
+    mentoradoId?: string | null;
   }>({
     id: undefined,
     nome: "Carregando...",
@@ -265,32 +279,32 @@ export default function MentoresMentoradoHomePage() {
     avatarUrl: null,
     accountType: null,
     mentoradoId: null,
-  })
+  });
 
-  const [curriculos, setCurriculos] = useState<MentoradoCurriculo[]>([])
-  const [audios, setAudios] = useState<MentoradoAudio[]>([])
-  const [audioModalOpen, setAudioModalOpen] = useState(false)
-  const [ultimoAudioSrc, setUltimoAudioSrc] = useState<string | null>(null)
+  const [curriculos, setCurriculos] = useState<MentoradoCurriculo[]>([]);
+  const [audios, setAudios] = useState<MentoradoAudio[]>([]);
+  const [audioModalOpen, setAudioModalOpen] = useState(false);
+  const [ultimoAudioSrc, setUltimoAudioSrc] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const cvInputRef = useRef<HTMLInputElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cvInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    document.body.classList.remove("login-bg")
-    document.body.classList.add("no-scroll")
-    return () => document.body.classList.remove("no-scroll")
-  }, [])
+    document.body.classList.remove("login-bg");
+    document.body.classList.add("no-scroll");
+    return () => document.body.classList.remove("no-scroll");
+  }, []);
 
   // Carregar usuário + mentoradoId + audios + currículos
   useEffect(() => {
-    ;(async () => {
+    (async () => {
       if (!usuarioIdParam) {
-        setUsuario((p) => ({ ...p, nome: "Usuário", email: "" }))
-        return
+        setUsuario((p) => ({ ...p, nome: "Usuário", email: "" }));
+        return;
       }
       try {
-        const data = await getUsuarioById(usuarioIdParam)
-        const mentoradoId = mentoradoIdParam || data.mentorado?.id || null
+        const data = await getUsuarioById(usuarioIdParam);
+        const mentoradoId = mentoradoIdParam || data.mentorado?.id || null;
         setUsuario({
           id: data.id,
           nome: data.nome ?? "Usuário",
@@ -298,123 +312,134 @@ export default function MentoresMentoradoHomePage() {
           avatarUrl: resolveImageUrl(data.avatarUrl) ?? null, // normaliza
           accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
           mentoradoId,
-        })
+        });
 
         if (mentoradoId) {
           // Áudios
-          const resAud = await listMentoradoAudios(mentoradoId).catch(() => null)
-          if (resAud?.ok) setAudios(resAud.audios)
+          const resAud = await listMentoradoAudios(mentoradoId).catch(() => null);
+          if (resAud?.ok) setAudios(resAud.audios);
 
           // Currículos
-          const resCv = await listMentoradoCurriculos(mentoradoId).catch(() => null)
-          setCurriculos(resCv?.arquivos || [])
+          const resCv = await listMentoradoCurriculos(mentoradoId).catch(() => null);
+          setCurriculos(resCv?.arquivos || []);
         }
       } catch (err) {
-        console.error("[MentoresMentoradoHomePage] GET /usuarios/{id} falhou:", err)
+        console.error("[MentoresMentoradoHomePage] GET /usuarios/{id} falhou:", err);
         setUsuario({
-          id: undefined, nome: "Usuário", email: "", avatarUrl: null, accountType: null, mentoradoId: null,
-        })
-        setCurriculos([])
+          id: undefined,
+          nome: "Usuário",
+          email: "",
+          avatarUrl: null,
+          accountType: null,
+          mentoradoId: null,
+        });
+        setCurriculos([]);
       }
-    })()
-  }, [usuarioIdParam, mentoradoIdParam])
+    })();
+  }, [usuarioIdParam, mentoradoIdParam]);
 
   // Prévia do último áudio (sempre atualiza quando a lista mudar)
   useEffect(() => {
-    ;(async () => {
-      if (!usuario.mentoradoId) return
-      const last = audios?.[0]
+    (async () => {
+      if (!usuario.mentoradoId) return;
+      const last = audios?.[0];
       if (!last) {
-        if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc)
-        setUltimoAudioSrc(null)
-        return
+        if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc);
+        setUltimoAudioSrc(null);
+        return;
       }
       try {
-        const { blob } = await fetchAudioBlob(usuario.mentoradoId, last)
-        const url = URL.createObjectURL(blob)
-        if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc)
-        setUltimoAudioSrc(url)
+        const { blob } = await fetchAudioBlob(usuario.mentoradoId, last);
+        const url = URL.createObjectURL(blob);
+        if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc);
+        setUltimoAudioSrc(url);
       } catch (e) {
-        console.error("[MentoresMentoradoHomePage] carregar áudio falhou:", e)
+        console.error("[MentoresMentoradoHomePage] carregar áudio falhou:", e);
       }
-    })()
+    })();
     return () => {
-      if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc)
-    }
-  }, [audios, usuario.mentoradoId])
+      if (ultimoAudioSrc) URL.revokeObjectURL(ultimoAudioSrc);
+    };
+  }, [audios, usuario.mentoradoId]);
 
-  const avatarFallback = "/images/avatar.png"
+  const avatarFallback = "/images/avatar.png";
   const avatarSrc =
     usuario.avatarUrl && usuario.avatarUrl.trim().length > 0
       ? usuario.avatarUrl
-      : avatarFallback
+      : avatarFallback;
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!usuario.id) return
-    const file = e.target.files?.[0]
-    if (!file) return
-    const formData = new FormData()
-    formData.append("file", file)
+    if (!usuario.id) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
     try {
-      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData)
+      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData);
       if (data?.url) {
-        const absolute = resolveImageUrl(String(data.url))
-        const busted = cacheBust(absolute)
-        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }))
+        const absolute = resolveImageUrl(String(data.url));
+        const busted = cacheBust(absolute);
+        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }));
       }
     } catch (err) {
-      console.error("[MentoresMentoradoHomePage] upload avatar falhou:", err)
+      console.error("[MentoresMentoradoHomePage] upload avatar falhou:", err);
     } finally {
-      if (e.currentTarget) e.currentTarget.value = ""
+      if (e.currentTarget) e.currentTarget.value = "";
     }
   }
 
   function handleCvClick() {
-    cvInputRef.current?.click()
+    cvInputRef.current?.click();
   }
 
   async function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     if (!usuario.mentoradoId) {
-      alert("Finalize o cadastro de mentorado antes de enviar o currículo.")
-      e.currentTarget.value = ""
-      return
+      alert("Finalize o cadastro de mentorado antes de enviar o currículo.");
+      e.currentTarget.value = "";
+      return;
     }
     try {
       if (files.length === 1) {
-        await uploadCurriculo(usuario.mentoradoId, files[0]) // compat
+        await uploadCurriculo(usuario.mentoradoId, files[0]); // compat
       } else {
-        await uploadCurriculos(usuario.mentoradoId, Array.from(files))
+        await uploadCurriculos(usuario.mentoradoId, Array.from(files));
       }
       // refresh da lista
-      const res = await listMentoradoCurriculos(usuario.mentoradoId)
-      setCurriculos(res.arquivos || [])
+      const res = await listMentoradoCurriculos(usuario.mentoradoId);
+      setCurriculos(res.arquivos || []);
     } catch (err) {
-      console.error("[MentoresMentoradoHomePage] upload currículo falhou:", err)
-      alert("Falha no upload do(s) currículo(s).")
+      console.error("[MentoresMentoradoHomePage] upload currículo falhou:", err);
+      alert("Falha no upload do(s) currículo(s).");
     } finally {
-      e.currentTarget.value = ""
+      e.currentTarget.value = "";
     }
   }
 
   async function handleCvDownloadLatest() {
-    if (!usuario.mentoradoId) return
+    if (!usuario.mentoradoId) return;
     try {
-      await downloadCurriculo(usuario.mentoradoId)
+      await downloadCurriculo(usuario.mentoradoId);
     } catch (err: any) {
-      console.error("[MentoresMentoradoHomePage] download (último) falhou:", err?.response?.data ?? err?.message)
-      alert("Falha ao baixar o currículo (último).")
+      console.error(
+        "[MentoresMentoradoHomePage] download (último) falhou:",
+        err?.response?.data ?? err?.message
+      );
+      alert("Falha ao baixar o currículo (último).");
     }
   }
 
   async function handleCvDownloadByName(filename: string) {
-    if (!usuario.mentoradoId) return
+    if (!usuario.mentoradoId) return;
     try {
-      await downloadCurriculoByName(usuario.mentoradoId, filename)
+      await downloadCurriculoByName(usuario.mentoradoId, filename);
     } catch (err: any) {
-      console.error("[MentoresMentoradoHomePage] download por nome falhou:", err?.response?.data ?? err?.message)
-      alert("Falha ao baixar o arquivo.")
+      console.error(
+        "[MentoresMentoradoHomePage] download por nome falhou:",
+        err?.response?.data ?? err?.message
+      );
+      alert("Falha ao baixar o arquivo.");
     }
   }
 
@@ -423,12 +448,12 @@ export default function MentoresMentoradoHomePage() {
       ? "mentorados-badge badge--executive"
       : usuario.accountType === "First Class"
       ? "mentorados-badge badge--firstclass"
-      : "mentorados-badge hidden"
+      : "mentorados-badge hidden";
 
-  const hasCv = curriculos.length > 0
-  const ultimoCv = hasCv ? curriculos[0] : null
+  const hasCv = curriculos.length > 0;
+  const ultimoCv = hasCv ? curriculos[0] : null;
 
-  const idInvalido = !usuarioIdParam
+  const idInvalido = !usuarioIdParam;
 
   return (
     <div className="mentorados-home">
@@ -458,12 +483,12 @@ export default function MentoresMentoradoHomePage() {
                 draggable={false}
                 onClick={() => fileInputRef.current?.click()}
                 onError={(e) => {
-                  const img = e.currentTarget as HTMLImageElement
+                  const img = e.currentTarget as HTMLImageElement;
                   if (
                     img.src !== window.location.origin + avatarFallback &&
                     img.src !== avatarFallback
                   ) {
-                    img.src = avatarFallback
+                    img.src = avatarFallback;
                   }
                 }}
               />
@@ -485,7 +510,13 @@ export default function MentoresMentoradoHomePage() {
             <div className={`mentorados-card mentorados-card--cv${hasCv ? " has-file" : ""}`}>
               <div
                 className="mentorados-cv-info"
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%" }}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  width: "100%",
+                }}
               >
                 <div>
                   <h3>Currículos</h3>
@@ -495,24 +526,52 @@ export default function MentoresMentoradoHomePage() {
                       {ultimoCv && (
                         <p className="cv-file" style={{ marginBottom: 8 }}>
                           <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
-                          <button onClick={handleCvDownloadLatest} className="cv-download" style={{ marginLeft: 8 }}>
+                          <button
+                            onClick={handleCvDownloadLatest}
+                            className="cv-download"
+                            style={{ marginLeft: 8 }}
+                          >
                             Baixar Último
                           </button>
                         </p>
                       )}
-                      <div style={{ maxHeight: 180, overflowY: "auto", borderTop: "1px solid #eee", paddingTop: 8 }}>
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: "auto",
+                          borderTop: "1px solid #eee",
+                          paddingTop: 8,
+                        }}
+                      >
                         {curriculos.map((c) => (
                           <div
                             key={c.filename}
-                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "6px 0" }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 10,
+                              padding: "6px 0",
+                            }}
                           >
-                            <div style={{ fontSize: 14, color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div
+                              style={{
+                                fontSize: 14,
+                                color: "#333",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
                               {c.originalName || c.filename}
                               <span style={{ color: "#888", fontSize: 12, marginLeft: 8 }}>
                                 {new Date(c.savedAt).toLocaleString()}
                               </span>
                             </div>
-                            <button className="cv-download" onClick={() => handleCvDownloadByName(c.filename)}>
+                            <button
+                              className="cv-download"
+                              onClick={() => handleCvDownloadByName(c.filename)}
+                            >
                               Baixar
                             </button>
                           </div>
@@ -576,7 +635,9 @@ export default function MentoresMentoradoHomePage() {
                         {audios[0].filename} • {(audios[0].size / 1024).toFixed(1)} KB
                       </span>
                       <button
-                        onClick={() => audios?.[0] && downloadMentoradoAudio(usuario.mentoradoId!, audios[0])}
+                        onClick={() =>
+                          audios?.[0] && downloadMentoradoAudio(usuario.mentoradoId!, audios[0])
+                        }
                         className="cv-download"
                       >
                         Baixar
@@ -589,13 +650,22 @@ export default function MentoresMentoradoHomePage() {
               </div>
             </div>
 
-            {/* Metas do SSI (vertical) */}
-            <SsiMetasVertical />
+            {/* === Cronograma (8 semanas) + Rotina Fixa — usando o usuário do mentorado aberto === */}
+            <CronogramaSemanasTable usuarioIdOverride={usuario.id} />
+            <RotinaSemanalFixa usuarioIdOverride={usuario.id} />
+
+            {/* === Tabela única do SSI (12 semanas) === */}
+            <MentoradoSsiTabela />
 
             {/* Tabela de Vagas */}
             <VagasTable pageSize={10} />
 
-            <img src="/images/dashboard.png" alt="" className="mentorados-center-image" draggable={false} />
+            <img
+              src="/images/dashboard.png"
+              alt=""
+              className="mentorados-center-image"
+              draggable={false}
+            />
           </div>
         )}
       </div>
@@ -608,10 +678,10 @@ export default function MentoresMentoradoHomePage() {
           mentoradoId={usuario.mentoradoId}
           onSaved={async (audio) => {
             // coloca no topo e força recarregar preview
-            setAudios((prev) => [audio, ...prev])
+            setAudios((prev) => [audio, ...prev]);
           }}
         />
       )}
     </div>
-  )
+  );
 }

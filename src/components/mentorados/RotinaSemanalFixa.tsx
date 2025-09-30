@@ -1,80 +1,98 @@
-// frontend/src/components/ssi/RotinaSemanalFixa.tsx
+import { useEffect, useMemo, useState } from "react"
+import {
+  decodeJwt,
+  getToken,
+  listCronogramaRotina,
+  seedCronograma,
+  upsertCronogramaRotina,
+  type CronogramaRotinaItem,
+} from "../../lib/api"
 
-const ITENS: Array<{ titulo: string; frequencia: string; obs?: string }> = [
-  { titulo: "Compartilhar conteúdos relevantes para o setor.", frequencia: "Semanal" },
-  { titulo: "Interagir com profissionais de destaque e grupos.", frequencia: "Semanal" },
-  { titulo: "Interagir mais frequentemente com conexões através de comentários e mensagens.", frequencia: "Semanal" },
-  { titulo: "Compartilhar atualizações profissionais.", frequencia: "Semanal" },
-  { titulo: "Atualizar o perfil com as informações do mapeamento.", frequencia: "Semanal" },
-  { titulo: "Participar de discussões em grupos e compartilhar artigos.", frequencia: "Semanal" },
-  { titulo: "Criar e compartilhar conteúdo original que demonstre expertise.", frequencia: "Semanal" },
-  { titulo: "Personalizar o perfil com informações relevantes para as vagas.", frequencia: "Semanal" },
-  { titulo: "Pesquisar e se conectar com decisores e influenciadores do setor.", frequencia: "Semanal" },
-  { titulo: "Utilizar filtros avançados para encontrar contatos relevantes.", frequencia: "Semanal" },
-  { titulo: "Compartilhar insights e comentários em posts de profissionais da área.", frequencia: "Semanal" },
-  { titulo: "Publicar conteúdo relevante e de valor para a rede.", frequencia: "Semanal" },
-  { titulo: "Manter contato frequente com conexões estratégicas.", frequencia: "Semanal" },
-  { titulo: "Enviar mensagens de follow-up para contatos importantes.", frequencia: "Semanal" },
-  { titulo: "Aumentar a frequência de publicações semanais.", frequencia: "Semanal" },
-  { titulo: "Marcar pessoas relevantes para ampliar o alcance.", frequencia: "Semanal" },
-  { titulo: "Otimizar o perfil com base nas vagas e oportunidades desejadas.", frequencia: "Semanal" },
-  { titulo: "Interagir mais com a rede para aumentar a visibilidade.", frequencia: "Semanal" },
-  { titulo: "Atualizar o perfil com informações das vagas e habilidades específicas.", frequencia: "Semanal" },
-  { titulo: "Participar de discussões em grupos de interesse.", frequencia: "Semanal" },
-  { titulo: "Ajustar o perfil para refletir as qualificações desejadas.", frequencia: "Semanal" },
-  { titulo: "Adicionar detalhes das realizações profissionais e objetivos.", frequencia: "Semanal" },
-  { titulo: "Interagir com recrutadores e participar de eventos online.", frequencia: "Semanal" },
-  { titulo: "Solicitar recomendações com pessoas com quem trabalhou.", frequencia: "Semanal" },
-  { titulo: "Utilizar a funcionalidade de candidatura simplificada em vagas compatíveis.", frequencia: "Semanal" },
-  { titulo: "Personalizar o perfil para as oportunidades desejadas.", frequencia: "Semanal" },
-  { titulo: "Acompanhar o status das candidaturas e realizar follow-up.", frequencia: "Semanal" },
-  { titulo: "Ajustar o perfil com palavras-chave específicas para atrair recrutadores.", frequencia: "Semanal" },
-  { titulo: "Adicionar um resumo atrativo e resultados mensuráveis no currículo.", frequencia: "Semanal" },
-  { titulo: "Manter o CAC atualizado e alinhado com o perfil.", frequencia: "Semanal" },
-  { titulo: "Enviar mensagens personalizadas para contatos de RH e acompanhar feedbacks.", frequencia: "Semanal" },
-  { titulo: "Agendar reuniões para discutir oportunidades e feedbacks.", frequencia: "Semanal" },
-  { titulo: "Definir uma agenda para postagens regulares.", frequencia: "Semanal" },
-  { titulo: "Participar activamente em discussões e comentar em posts de conexões.", frequencia: "Semanal" },
-  { titulo: "Comentar em postagens de influenciadores e conexões.", frequencia: "Semanal" },
-  { titulo: "Fazer perguntas e iniciar discussões nos comentários.", frequencia: "Semanal" },
-  { titulo: "Participar de grupos e discutir tendências e tópicos relevantes.", frequencia: "Semanal" },
-  { titulo: "Compartilhar conhecimento e experiências profissionais.", frequencia: "Semanal" },
-  { titulo: "Enviar solicitações de conexão com uma mensagem personalizada.", frequencia: "Semanal" },
-  { titulo: "Participar de grupos onde headhunters estão ativos.", frequencia: "Semanal" },
-  { titulo: "Enviar convites personalizados destacando um interesse comum.", frequencia: "Semanal" },
-  { titulo: "Acompanhar postagens e interagir com os decisores.", frequencia: "Semanal" },
-  { titulo: "Personalizar as mensagens para recrutadores com base em vagas específicas.", frequencia: "Semanal" },
-  { titulo: "Realizar follow-up e buscar feedbacks.", frequencia: "Semanal" },
-  { titulo: "Compartilhar atualizações e ideias com a rede.", frequencia: "Semanal" },
-  { titulo: "Enviar mensagens para novos contatos e acompanhar o progresso.", frequencia: "Semanal" },
-  { titulo: "Propor reuniões presenciais ou virtuais com contatos estratégicos.", frequencia: "Semanal" },
-  { titulo: "Definir um tema ou objetivo para o encontro.", frequencia: "Semanal" },
-  { titulo: "Agendar encontros presenciais ou virtuais com contatos estratégicos.", frequencia: "Semanal" },
-  { titulo: "Propor temas de discussão que agreguem valor.", frequencia: "Semanal" },
-  { titulo: "Acompanhar feedbacks de entrevistas anteriores.", frequencia: "Semanal" },
-  { titulo: "Ajustar respostas e preparar-se para questões complexas.", frequencia: "Semanal" },
-  { titulo: "Solicitar feedback ao final das entrevistas para entender pontos a melhorar.", frequencia: "Semanal" },
-  { titulo: "Reforçar as qualificações e demonstrar interesse.", frequencia: "Semanal" },
-  { titulo: "Enviar follow-up após entrevistas para reforçar interesse.", frequencia: "Semanal" },
-  { titulo: "Negociar com base em múltiplas ofertas, se disponíveis.", frequencia: "Semanal" },
-];
+function pickUserIdFromJwt(jwt?: string | null): string | null {
+  const p = decodeJwt<any>(jwt)
+  const candidates = [p?.sub, p?.id, p?.userId, p?.uid, p?.usuarioId, p?.user_id]
+  const found = candidates.find((v) => typeof v === "string" && v.trim().length > 0)
+  return found ? String(found) : null
+}
 
-export default function RotinaSemanalFixa() {
+export default function RotinaSemanalFixa(props: { usuarioIdOverride?: string }) {
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+  const [itens, setItens] = useState<CronogramaRotinaItem[]>([])
+
+  const usuarioId = useMemo(() => {
+    return props.usuarioIdOverride || pickUserIdFromJwt(getToken())
+  }, [props.usuarioIdOverride])
+
+  async function carregar() {
+    setErro(null)
+    setLoading(true)
+    try {
+      await seedCronograma(usuarioId || undefined).catch(() => ({} as any))
+      const data = await listCronogramaRotina(usuarioId || undefined)
+      // só FIXA e ativa
+      const list = data
+        .filter((d) => d.grupo === "FIXA" && d.ativo)
+        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      setItens(list)
+    } catch (e: any) {
+      setErro(e?.response?.data?.message || "Falha ao carregar rotina.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { carregar() }, [usuarioId])
+
+  async function resetarParaPadrao() {
+    try {
+      await upsertCronogramaRotina(
+        [
+          { dia: "Segunda", titulo: "Aplicar para vagas + revisar indicadores", ordem: 1, ativo: true },
+          { dia: "Terça",   titulo: "Criar/publicar conteúdo no LinkedIn",      ordem: 2, ativo: true },
+          { dia: "Quarta",  titulo: "Networking ativo (novas conexões, interações)", ordem: 3, ativo: true },
+          { dia: "Quinta",  titulo: "Participar do Open Room (18h)",            ordem: 4, ativo: true },
+          { dia: "Sexta",   titulo: "Revisão da semana + atualização de planilhas", ordem: 5, ativo: true },
+        ],
+        usuarioId || undefined,
+      )
+      await carregar()
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "Falha ao restaurar a rotina.")
+    }
+  }
+
   return (
-    <div style={{ background:"#fff", borderRadius:12, boxShadow:"0 6px 16px rgba(0,0,0,0.12)", padding:16, marginTop:20 }}>
-      <h3 style={{ marginTop:0 }}>Rotina Semanal Fixa</h3>
-      {ITENS.length === 0 ? (
-        <div style={{ color:"#64748b", fontSize:13 }}>Preencha os itens com base na planilha.</div>
-      ) : (
-        <ul style={{ margin:0, paddingLeft:18, lineHeight:1.7 }}>
-          {ITENS.map((i, idx) => (
-            <li key={idx}>
-              <strong>{i.titulo}</strong> — <span>{i.frequencia}</span>
-              {i.obs ? <> — {i.obs}</> : null}
-            </li>
+    <div className="mentorados-card" style={{ padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h3 style={{ marginTop: 0 }}>Rotina Semanal Fixa</h3>
+        <button className="cv-upload-btn" onClick={resetarParaPadrao} title="Restaurar padrão">
+          Restaurar
+        </button>
+      </div>
+
+      {loading && <div style={{ color: "#777", fontSize: 14 }}>Carregando…</div>}
+      {erro && (
+        <div style={{ color: "#b00020", fontSize: 14, marginTop: 6 }}>
+          {erro} <button className="cv-upload-btn" onClick={carregar} style={{ marginLeft: 8 }}>Tentar novamente</button>
+        </div>
+      )}
+
+      {!loading && !erro && (
+        <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "8px 16px" }}>
+          {itens.map((i) => (
+            <div
+              key={`${i.dia}-${i.ordem}`}
+              style={{
+                display: "contents",
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>{i.dia}:</div>
+              <div>{i.titulo}</div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
-  );
+  )
 }

@@ -319,7 +319,7 @@ export async function uploadMentoradoAudio(
   if (!mentoradoId) throw new Error("mentoradoId obrigatório")
   const form = new FormData()
 
-  // Garante nome/extensão compatível com o backend (mp3|wav), preferindo WAV.
+  // Garante nome/ext compatível
   const lower = (blob.type || "").toLowerCase()
   let ext = ".wav"
   if (lower.includes("mpeg") || lower.includes("mp3")) ext = ".mp3"
@@ -400,8 +400,94 @@ export async function createMyVagaLink(payload: CreateVagaLinkPayload) {
   return data
 }
 
-/* ============================ SSI ============================ */
-export type SsiMetrica =
+/* ====================================================================== */
+/* ==================== MENTORADO CRONOGRAMA (NOVO) ===================== */
+/* ====================================================================== */
+
+export type CronogramaSemanaItem = {
+  id: string
+  semana: string            // "Semana 1", "Semana 2 a 4", ...
+  meta: string              // título da meta
+  tarefa: string            // descrição da tarefa
+  ordem: number
+  concluido: boolean
+}
+
+export type CronogramaSemanasGrouped = Record<
+  string,
+  { meta: string; tarefas: Array<Pick<CronogramaSemanaItem, "id" | "tarefa" | "ordem" | "concluido">> }
+>
+
+export type CronogramaRotinaItem = {
+  id: string
+  usuarioId?: string | null
+  grupo: string             // "FIXA"
+  dia: string               // "Segunda", ...
+  titulo: string            // "Aplicar para vagas + revisar indicadores"
+  ordem: number
+  ativo: boolean
+}
+
+/** Garante que o seed (template) exista */
+export async function seedCronograma(usuarioId?: string) {
+  const { data } = await api.post<{ ok: boolean; seeded: boolean }>(
+    `/mentorado-cronograma/seed`,
+    usuarioId ? { usuarioId } : {},
+  )
+  return data
+}
+
+/** GET /mentorado-cronograma/semanas (agrupado por semana) */
+export async function listCronogramaSemanas(usuarioId?: string) {
+  const { data } = await api.get<CronogramaSemanasGrouped>(`/mentorado-cronograma/semanas`, {
+    params: usuarioId ? { usuarioId } : undefined,
+  })
+  return data
+}
+
+/** PATCH /mentorado-cronograma/semanas/:id */
+export async function updateCronogramaSemana(
+  id: string,
+  dto: Partial<Pick<CronogramaSemanaItem, "concluido" | "tarefa" | "ordem">>,
+) {
+  const { data } = await api.patch<CronogramaSemanaItem>(`/mentorado-cronograma/semanas/${id}`, dto)
+  return data
+}
+
+/** GET /mentorado-cronograma/rotina */
+export async function listCronogramaRotina(usuarioId?: string) {
+  const { data } = await api.get<CronogramaRotinaItem[]>(
+    `/mentorado-cronograma/rotina`,
+    { params: usuarioId ? { usuarioId } : undefined },
+  )
+  return data
+}
+
+/** PUT /mentorado-cronograma/rotina (regrava FIXA) */
+export async function upsertCronogramaRotina(
+  itens: Array<Pick<CronogramaRotinaItem, "dia" | "titulo" | "ordem" | "ativo">>,
+  usuarioId?: string,
+) {
+  const { data } = await api.put<{ ok: boolean }>(
+    `/mentorado-cronograma/rotina`,
+    { itens, usuarioId: usuarioId ?? null },
+  )
+  return data
+}
+
+/* ====================================================================== */
+/* ======================= MENTORADO-SSI (NOVO) ========================= */
+/* ====================================================================== */
+/**
+ * ATENÇÃO:
+ * - Este módulo NÃO persiste nada.
+ * - O backend expõe endpoints em /mentorado-ssi para:
+ *   - GET  /mentorado-ssi/definicoes        -> textos e metas
+ *   - GET  /mentorado-ssi/tabela-vazia      -> esqueleto 12 semanas
+ *   - POST /mentorado-ssi/classificar       -> classifica [OTIMO|BOM|RUIM]
+ */
+
+export type MssIndicador =
   | "SSI_SETOR"
   | "SSI_REDE"
   | "SSI_TOTAL"
@@ -412,6 +498,7 @@ export type SsiMetrica =
   | "IMPRESSOES_PUBLICACAO"
   | "VISUALIZACOES_PERFIL"
   | "OCORRENCIAS_PESQUISA"
+  | "CARGOS_ENCONTRARAM_PERFIL"
   | "TAXA_RECRUTADORES"
   | "CANDIDATURAS_SIMPLIFICADAS"
   | "CANDIDATURAS_VISUALIZADAS"
@@ -419,7 +506,6 @@ export type SsiMetrica =
   | "CONTATOS_RH"
   | "PUBLICACOES_SEMANA"
   | "INTERACOES_COMENTARIOS"
-  | "CONTRIBUICOES_ARTIGOS"
   | "PEDIDOS_CONEXAO_HEADHUNTERS"
   | "PEDIDOS_CONEXAO_DECISORES"
   | "MENSAGENS_RECRUTADORES"
@@ -430,146 +516,65 @@ export type SsiMetrica =
   | "ENTREVISTAS_FASE_FINAL"
   | "CARTAS_OFERTA"
 
-export type SsiUnidade = "NUMERO" | "PERCENTUAL"
-export type SsiStatus = "OTIMO" | "BOM" | "RUIM"
+export type MssStatus = "OTIMO" | "BOM" | "RUIM"
 
-export type SsiResultado = {
-  id: string
-  usuarioId: string | null
-  metrica: SsiMetrica
-  dataReferencia: string
-  valor: string
-  unidade: SsiUnidade
-  status: SsiStatus
-  metaAplicada: string
-  criadoEm: string
-  atualizadoEm: string
+export type MssDefinicao = {
+  indicador: MssIndicador
+  nome: string
+  meta: string
+  textos: {
+    positivo: string[]
+    negativo: string[]
+    planoDeAcao: string[]
+  }
 }
 
-export type SsiMeta = {
-  id: string
-  metrica: SsiMetrica
-  valorMeta: string
-  unidade: SsiUnidade
-  criadoEm: string
-  atualizadoEm: string
+export type MssTabelaVaziaItem = {
+  indicador: MssIndicador
+  nome: string
+  meta: string
+  semanas: (number | null)[] // 12 posições
+  textos: {
+    positivo: string[]
+    negativo: string[]
+    planoDeAcao: string[]
+  }
 }
 
-export async function listSsi(params: {
-  usuarioId?: string
-  metrica?: SsiMetrica
-  dataInicio?: string
-  dataFim?: string
-  pagina?: number
-  quantidade?: number
-}) {
-  const { data } = await api.get<{
-    total: number
-    pagina: number
-    quantidade: number
-    items: SsiResultado[]
-  }>("/ssi", { params })
+export type MssClassificarInItem = {
+  indicador: MssIndicador
+  semanas: number[] // até 12 valores
+}
+
+export type MssClassificarOutItem = {
+  indicador: MssIndicador
+  nome: string
+  meta: string
+  semanas: number[]            // ecoa os valores enviados (limit 12)
+  statusSemanal: MssStatus[]   // classificação para cada semana
+  textos: {
+    positivo: string[]
+    negativo: string[]
+    planoDeAcao: string[]
+  }
+}
+
+/** GET /mentorado-ssi/definicoes */
+export async function getMssDefinicoes() {
+  const { data } = await api.get<MssDefinicao[]>(`/mentorado-ssi/definicoes`)
   return data
 }
 
-export async function upsertSsi(dto: {
-  usuarioId?: string
-  metrica: SsiMetrica
-  dataReferencia: string
-  valor: number
-}) {
-  const { data } = await api.put<{ sucesso: true }>("/ssi", dto)
+/** GET /mentorado-ssi/tabela-vazia (12 semanas com nulls) */
+export async function getMssTabelaVazia() {
+  const { data } = await api.get<MssTabelaVaziaItem[]>(`/mentorado-ssi/tabela-vazia`)
   return data
 }
 
-export async function postSsiBatch(dto: {
-  usuarioId?: string
-  dataReferencia: string
-  itens: { metrica: SsiMetrica; valor: number }[]
-}) {
-  const { data } = await api.post<{ sucesso: true }>("/ssi/batch", dto)
+/** POST /mentorado-ssi/classificar */
+export async function postMssClassificar(itens: MssClassificarInItem[]) {
+  const { data } = await api.post<MssClassificarOutItem[]>(`/mentorado-ssi/classificar`, { itens })
   return data
-}
-
-export async function upsertSsiBatch(dto: {
-  usuarioId?: string
-  dataReferencia: string
-  itens: { metrica: SsiMetrica; valor: number }[]
-}) {
-  const { data } = await api.put<{ sucesso: true }>("/ssi/batch", dto)
-  return data
-}
-
-export async function listSsiMetas() {
-  const { data } = await api.get<SsiMeta[]>("/ssi/metas")
-  return data
-}
-
-export async function upsertSsiMeta(
-  dto: { metrica: SsiMetrica; valorMeta: number; unidade: SsiUnidade },
-  recalc?: boolean,
-) {
-  const { data } = await api.put<{ sucesso: true }>("/ssi/metas", dto, {
-    params: { recalcular: recalc ? "true" : "false" },
-  })
-  return data
-}
-
-export async function upsertSsiMetasBatch(
-  itens: { metrica: SsiMetrica; valorMeta: number; unidade: SsiUnidade }[],
-  recalc?: boolean,
-) {
-  const body = { itens }
-  const { data } = await api.put<{ sucesso: true }>("/ssi/metas/batch", body, {
-    params: { recalcular: recalc ? "true" : "false" },
-  })
-  return data
-}
-
-/* ============================ SSI: Semanas & Consulta por semana ============================ */
-export type SsiWeekRef = { dataReferencia: string; totalMetricas: number }
-
-export type SsiSemanaPayload = {
-  semana: string
-  itens: Array<{
-    id: string
-    usuarioId: string | null
-    metrica: SsiMetrica
-    dataReferencia: string
-    valor: string
-    unidade: SsiUnidade
-    status: "OTIMO" | "BOM" | "RUIM"
-    metaAplicada: string
-    criadoEm: string
-    atualizadoEm: string
-  }>
-}
-
-export async function listSsiWeeks() {
-  const { data } = await api.get<SsiWeekRef[]>("/ssi/semanas")
-  return data
-}
-
-export async function getSsiByWeek(date: string) {
-  const { data } = await api.get<SsiSemanaPayload>("/ssi/por-semana", {
-    params: { data: date },
-  })
-  return data
-}
-
-/* ============================ SSI: Dashboard por semanas ============================ */
-export type SsiDashboardTabela = {
-  semanas: string[]; // ex.: ['2025-09-01','2025-09-08',...]
-  itens: Array<{
-    metrica: SsiMetrica;
-    unidade: SsiUnidade;
-    valores: Record<string, number>; // chave = semana (data), valor = número
-  }>;
-};
-
-export async function getSsiDashboardTabela(params?: { dataInicio?: string; dataFim?: string }) {
-  const { data } = await api.get<SsiDashboardTabela>('/ssi/dashboard-tabela', { params });
-  return data;
 }
 
 /* ============================ Usuário: Update / Delete ============================ */

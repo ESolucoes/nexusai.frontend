@@ -4,12 +4,14 @@ import MentoradoHeader from "../../components/layout/MentoradoHeader";
 import "../../styles/mentorados/home.css";
 import { api, getToken, decodeJwt, getUsuarioById } from "../../lib/api";
 
-/** NOVOS imports do dashboard e submenus */
-import SsiDashboardTabela from "../../components/mentorados/SsiDashboardTabela";
+/** Tabela única do SSI (12 semanas) */
+import MentoradoSsiTabela from "../../components/mentorados/MentoradoSsiTabela";
+/** Cronograma (8 semanas) + Rotina Fixa */
+import CronogramaSemanasTable from "../../components/mentorados/CronogramaSemanasTable";
 import RotinaSemanalFixa from "../../components/mentorados/RotinaSemanalFixa";
-import CronogramaAtividades from "../../components/mentorados/CronogramaAtividades";
-import ConexoesPrimeiroNivel from "../../components/mentorados/ConexoesPrimeiroNivel";
-import AdicaoHeadhunters from "../../components/mentorados/AdicaoHeadhunters";
+
+/** Modal de Headhunters (arquivo separado) */
+import HeadhuntersModal from "../../components/mentorados/HeadhuntersModal";
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt);
@@ -49,6 +51,8 @@ export default function HomePage() {
     avatarUrl: null,
     accountType: null,
   });
+
+  const [headhModalOpen, setHeadhModalOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -169,12 +173,32 @@ export default function HomePage() {
             <span className={badgeClass}>{usuario.accountType ?? ""}</span>
           </div>
 
-          {/* DASHBOARD + SUBMENUS (iguais à planilha) */}
-          <SsiDashboardTabela />
+          {/* BOTÃO PARA ABRIR MODAL DE HEADHUNTERS */}
+          <button
+            type="button"
+            onClick={() => setHeadhModalOpen(true)}
+            className="cv-upload-btn"
+            style={{
+              alignSelf: "flex-start",
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid #ddd",
+              background: "#fff",
+              cursor: "pointer",
+              marginBottom: 12,
+            }}
+            aria-haspopup="dialog"
+            aria-expanded={headhModalOpen}
+          >
+            Headhunters
+          </button>
+
+          {/* === Cronograma (8 semanas) + Rotina Fixa === */}
+          <CronogramaSemanasTable />
           <RotinaSemanalFixa />
-          <CronogramaAtividades />
-          <ConexoesPrimeiroNivel />
-          <AdicaoHeadhunters />
+
+          {/* === Tabela única do SSI (12 semanas) === */}
+          <MentoradoSsiTabela />
         </div>
 
         <img
@@ -184,6 +208,12 @@ export default function HomePage() {
           draggable={false}
         />
       </div>
+
+      {/* MODAL DE HEADHUNTERS */}
+      <HeadhuntersModal
+        open={headhModalOpen}
+        onClose={() => setHeadhModalOpen(false)}
+      />
     </div>
   );
 }

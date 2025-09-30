@@ -254,50 +254,78 @@ export type MentoradoCurriculo = {
   savedAt: string;
 };
 
-// 🛑 A função uploadCurriculo foi atualizada para usar a nova rota /curriculos
-// e o campo 'files' (compatível com a lógica de upload único ou múltiplo),
-// já que o backend /curriculo agora usa a mesma lógica de salvamento.
-export async function uploadCurriculo(mentoradoId: string, file: File) {
+// Tipo de retorno simplificado para as funções de upload de arquivo único
+export type CurriculoUploadResult = {
+  sucesso: boolean;
+  storageKey: string;
+  filename: string;
+  mime: string;
+  tamanho: number;
+  url?: string | null;
+};
+
+/**
+ * Envia um único arquivo de currículo. Usa a rota de múltiplos no backend
+ * para garantir consistência, mas retorna apenas a informação do primeiro arquivo.
+ */
+export async function uploadCurriculo(
+  mentoradoId: string,
+  file: File
+): Promise<CurriculoUploadResult> {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
-  const files = [file];
   
   const form = new FormData();
-  for (const f of files) form.append("files", f); // Usando 'files'
+  // 💡 Envia o arquivo único sob o campo esperado pelo backend de múltiplos
+  form.append("files", file); 
   
   const { data } = await postForm(
-    `/mentorados/${mentoradoId}/curriculos`, // Usando rota /curriculos
+    `/mentorados/${mentoradoId}/curriculos`, // Rota que usa FilesInterceptor('files')
     form
   );
   
-  // O retorno é o mesmo do uploadCurriculos, mas garantindo compatibilidade
+  // O retorno é o mesmo do uploadCurriculos: um array de arquivos.
   const info = (data as { arquivos: MentoradoCurriculo[] })?.arquivos?.[0];
+  
+  if (!info) throw new Error("Upload concluído, mas informações do arquivo ausentes na resposta da API.");
   
   return {
     sucesso: true,
-    storageKey: info?.filename ?? "",
-    filename: info?.originalName ?? "",
-    mime: info?.mime ?? "",
-    tamanho: info?.size ?? 0,
-    url: info?.url ?? null,
-  } as {
-    sucesso: boolean;
-    storageKey: string;
-    filename: string;
-    mime: string;
-    tamanho: number;
-    url?: string | null;
+    storageKey: info.filename ?? "",
+    filename: info.originalName ?? "",
+    mime: info.mime ?? "",
+    tamanho: info.size ?? 0,
+    url: info.url ?? null,
   };
 }
 
-export async function downloadCurriculo(mentoradoId: string) {
+
+/**
+ * Envia múltiplos arquivos de currículo.
+ */
+export async function uploadCurriculos(mentoradoId: string, files: File[]) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
-  const url = apiUrl(`/mentorados/${mentoradoId}/curriculo`);
-  const { data, headers } = await api.get(url, { responseType: "blob" });
-  const name = pickFilenameFromHeaders(headers, "curriculo.pdf");
-  triggerBrowserDownload(data, name);
+  if (!files?.length) throw new Error("Nenhum arquivo selecionado");
+  
+  const form = new FormData();
+  for (const f of files) form.append("files", f);
+  
+  const { data } = await postForm(
+    `/mentorados/${mentoradoId}/curriculos`,
+    form
+  );
+  
+  return data as {
+    sucesso: boolean;
+    total: number;
+    arquivos: MentoradoCurriculo[];
+  };
 }
 
-// 🎯 FUNÇÃO ADICIONADA: Busca as informações do último currículo salvo (GET /latest-info)
+
+/**
+ * 🎯 FUNÇÃO CHAVE PARA O FRONTEND: Busca as informações do último currículo salvo (GET /latest-info).
+ * É obrigatório chamar esta função ao carregar a página (F5) para exibir o arquivo salvo.
+ */
 export async function getLatestCurriculoInfo(
   mentoradoId: string
 ): Promise<MentoradoCurriculo | null> {
@@ -308,31 +336,30 @@ export async function getLatestCurriculoInfo(
     );
     return data;
   } catch (error: any) {
-    // Retorna null se for 404 (Não Encontrado), indicando que não há currículo.
+    // Retorna null se for 404, indicando que não há currículo. Lança outros erros.
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       return null;
     }
-    // Lança outros erros (500, etc.)
     throw error;
   }
 }
 
-export async function uploadCurriculos(mentoradoId: string, files: File[]) {
+
+/**
+ * Baixa o currículo mais recente (sem passar o nome do arquivo).
+ */
+export async function downloadCurriculo(mentoradoId: string) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
-  if (!files?.length) throw new Error("Nenhum arquivo selecionado");
-  const form = new FormData();
-  for (const f of files) form.append("files", f);
-  const { data } = await postForm(
-    `/mentorados/${mentoradoId}/curriculos`,
-    form
-  );
-  return data as {
-    sucesso: boolean;
-    total: number;
-    arquivos: MentoradoCurriculo[];
-  };
+  const url = apiUrl(`/mentorados/${mentoradoId}/curriculo`);
+  const { data, headers } = await api.get(url, { responseType: "blob" });
+  const name = pickFilenameFromHeaders(headers, "curriculo.pdf");
+  triggerBrowserDownload(data, name);
 }
 
+
+/**
+ * Lista todos os currículos (se o backend salvar histórico).
+ */
 export async function listMentoradoCurriculos(mentoradoId: string) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   const { data } = await api.get<{
@@ -342,6 +369,9 @@ export async function listMentoradoCurriculos(mentoradoId: string) {
   return data;
 }
 
+/**
+ * Baixa um currículo específico pelo seu nome de arquivo.
+ */
 export async function downloadCurriculoByName(
   mentoradoId: string,
   filename: string
@@ -354,9 +384,10 @@ export async function downloadCurriculoByName(
     )}`
   );
   const { data, headers } = await api.get(url, { responseType: "blob" });
+  
   const name = ((): string => {
-    const cd =
-      headers?.["content-disposition"] || headers?.["Content-Disposition"];
+    // [Lógica de extração de nome do header, mantida]
+    const cd = headers?.["content-disposition"] || headers?.["Content-Disposition"];
     if (typeof cd === "string") {
       const star = /filename\*=(?:UTF-8''|)([^;]+)/i.exec(cd);
       if (star?.[1]) return decodeURIComponent(star[1].replace(/^"+|"+$/g, ""));
@@ -365,6 +396,7 @@ export async function downloadCurriculoByName(
     }
     return filename;
   })();
+  
   triggerBrowserDownload(data, name);
 }
 

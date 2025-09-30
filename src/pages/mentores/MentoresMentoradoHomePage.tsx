@@ -14,8 +14,8 @@ import {
   listMentoradoCurriculos,
   uploadCurriculos,
   uploadCurriculo,
-  downloadCurriculo,          // último (compat)
-  downloadCurriculoByName,    // por nome (novo)
+  downloadCurriculo, // último (compat)
+  downloadCurriculoByName, // por nome (novo)
   type MentoradoCurriculo,
   type MentoradoAudio,
 } from "../../lib/api";
@@ -261,7 +261,7 @@ export default function MentoresMentoradoHomePage() {
   const [search] = useSearchParams();
   const location = useLocation() as any;
 
-  // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
+  // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
   const usuarioIdParam = (search.get("id") || location?.state?.usuarioId || "").trim();
   const mentoradoIdParam = (search.get("mentoradoId") || location?.state?.mentoradoId || "").trim();
 
@@ -321,7 +321,11 @@ export default function MentoresMentoradoHomePage() {
 
           // Currículos
           const resCv = await listMentoradoCurriculos(mentoradoId).catch(() => null);
-          setCurriculos(resCv?.arquivos || []);
+          // Ordena a lista do mais recente para o mais antigo (o primeiro é o último enviado)
+          const sortedCv = resCv?.arquivos.sort(
+            (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+          );
+          setCurriculos(sortedCv || []);
         }
       } catch (err) {
         console.error("[MentoresMentoradoHomePage] GET /usuarios/{id} falhou:", err);
@@ -392,6 +396,11 @@ export default function MentoresMentoradoHomePage() {
     cvInputRef.current?.click();
   }
 
+  /**
+   * REESCRITO: Função de upload de currículos.
+   * - Suporta upload de 1 ou múltiplos arquivos.
+   * - Atualiza a lista `curriculos` após o sucesso.
+   */
   async function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -402,13 +411,20 @@ export default function MentoresMentoradoHomePage() {
     }
     try {
       if (files.length === 1) {
-        await uploadCurriculo(usuario.mentoradoId, files[0]); // compat
+        // Envia 1 arquivo (para compatibilidade, usa a função singular)
+        await uploadCurriculo(usuario.mentoradoId, files[0]);
       } else {
+        // Envia múltiplos arquivos (usa a função plural)
         await uploadCurriculos(usuario.mentoradoId, Array.from(files));
       }
-      // refresh da lista
+      
+      // Força o refresh da lista e reordena (mais recente primeiro)
       const res = await listMentoradoCurriculos(usuario.mentoradoId);
-      setCurriculos(res.arquivos || []);
+      const sortedCv = res.arquivos.sort(
+        (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+      );
+      setCurriculos(sortedCv || []);
+
     } catch (err) {
       console.error("[MentoresMentoradoHomePage] upload currículo falhou:", err);
       alert("Falha no upload do(s) currículo(s).");
@@ -417,9 +433,13 @@ export default function MentoresMentoradoHomePage() {
     }
   }
 
+  /**
+   * REESCRITO: Função de download do currículo mais recente (usando a função de compatibilidade).
+   */
   async function handleCvDownloadLatest() {
     if (!usuario.mentoradoId) return;
     try {
+      // Usa a função mais antiga que baixa o último enviado
       await downloadCurriculo(usuario.mentoradoId);
     } catch (err: any) {
       console.error(
@@ -430,9 +450,13 @@ export default function MentoresMentoradoHomePage() {
     }
   }
 
+  /**
+   * REESCRITO: Função de download de um currículo específico pelo nome (nova função).
+   */
   async function handleCvDownloadByName(filename: string) {
     if (!usuario.mentoradoId) return;
     try {
+      // Usa a nova função que baixa pelo nome do arquivo
       await downloadCurriculoByName(usuario.mentoradoId, filename);
     } catch (err: any) {
       console.error(
@@ -506,86 +530,101 @@ export default function MentoresMentoradoHomePage() {
               <span className={badgeClass}>{usuario.accountType ?? ""}</span>
             </div>
 
-            {/* CARD DO CURRÍCULO - Largura de 4 colunas (grid-span-4) */}
+            {/* CARD DO CURRÍCULO - Largura de 4 colunas (grid-span-4) - REESCRITO */}
             <div className={`mentorados-card mentorados-card--cv grid-span-4${hasCv ? " has-file" : ""}`}>
               <div
                 className="mentorados-cv-info"
                 style={{
                   display: "flex",
+                  flexDirection: "column",
                   justifyContent: "space-between",
-                  alignItems: "center",
                   gap: 12,
                   width: "100%",
+                  height: "100%", // Ocupa todo o espaço vertical para o botão ir para o final
                 }}
               >
-                <div style={{ flex: 1 }}>
+                <div>
                   <h3>Currículos</h3>
                   {!hasCv && <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>}
-                  {hasCv && (
-                    <>
-                      {ultimoCv && (
-                        <p className="cv-file" style={{ marginBottom: 8, color: '#fff' /* Corrigido para ser visível no card azul */ }}>
-                          <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
-                          <button
+                  
+                  {/* SEÇÃO DO ÚLTIMO CURRÍCULO (Foco) */}
+                  {ultimoCv && (
+                    <div style={{ marginBottom: 15, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.3)", color: '#fff' }}>
+                        <p className="cv-file" style={{ margin: 0 }}>
+                            <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
+                        </p>
+                        <button
                             onClick={handleCvDownloadLatest}
                             className="cv-download"
-                            style={{ marginLeft: 8 }}
-                          >
-                            Baixar Último
-                          </button>
-                        </p>
-                      )}
-                      <div
-                        style={{
-                          maxHeight: 180,
-                          overflowY: "auto",
-                          borderTop: "1px solid #fff", /* Corrigido para ser visível no card azul */
-                          paddingTop: 8,
-                          color: '#fff',
-                        }}
-                      >
-                        {curriculos.map((c) => (
-                          <div
-                            key={c.filename}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: 10,
-                              padding: "6px 0",
-                            }}
-                          >
+                            style={{ marginTop: 8 }}
+                        >
+                            Baixar Último (Compat)
+                        </button>
+                    </div>
+                  )}
+
+                  {/* LISTA DOS CURRÍCULOS ANTERIORES */}
+                  {curriculos.length > 1 && (
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: "auto",
+                        paddingTop: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                      }}
+                    >
+                      <h4 style={{ margin: "0 0 8px 0", color: '#fff' }}>Histórico ({curriculos.length} arquivos)</h4>
+                      {curriculos.map((c, index) => (
+                        // Pula o primeiro, que já é o "último"
+                        index > 0 && (
                             <div
-                              style={{
-                                fontSize: 14,
-                                color: "#fff", /* Corrigido para ser visível */
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
+                                key={c.filename}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 10,
+                                    padding: "6px 0",
+                                }}
                             >
-                              {c.originalName || c.filename}
-                              <span style={{ color: "#eee", fontSize: 12, marginLeft: 8 }}>
-                                {new Date(c.savedAt).toLocaleString()}
-                              </span>
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        color: "#fff",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {c.originalName || c.filename}
+                                    <span style={{ color: "#eee", fontSize: 12, marginLeft: 8 }}>
+                                        {new Date(c.savedAt).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <button
+                                    className="cv-download"
+                                    onClick={() => handleCvDownloadByName(c.filename)}
+                                >
+                                    Baixar
+                                </button>
                             </div>
-                            <button
-                              className="cv-download"
-                              onClick={() => handleCvDownloadByName(c.filename)}
-                            >
-                              Baixar
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                        )
+                      ))}
+                    </div>
                   )}
                 </div>
+                
+                {/* BOTÃO DE UPLOAD */}
+                <button 
+                    className="cv-upload-btn" 
+                    onClick={handleCvClick} 
+                    style={{ marginTop: 'auto' }}
+                    disabled={!usuario.mentoradoId} // Desabilita se não tiver mentoradoId
+                >
+                    Enviar Currículo(s) (PDF/DOC/DOCX)
+                </button>
               </div>
-
-              <button className="cv-upload-btn" onClick={handleCvClick} style={{ marginTop: 'auto' }}>
-                Enviar Currículo(s) (PDF/DOC/DOCX)
-              </button>
 
               <input
                 type="file"
@@ -597,7 +636,7 @@ export default function MentoresMentoradoHomePage() {
               />
             </div>
 
-            {/* CARD DE ÁUDIO - Largura de 4 colunas (grid-span-4) - Removido posicionamento absoluto */}
+            {/* CARD DE ÁUDIO - Largura de 4 colunas (grid-span-4) - Mantido */}
             <div className="mentorados-card mentorados-card--audio grid-span-4" style={{ background: "#fff", color: "#0f172a", padding: 16, boxShadow: "0 6px 16px rgba(0,0,0,0.12)", gap: 10, flexDirection: 'column', alignItems: 'flex-start' }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: '100%' }}>
                 <h4 style={{ margin: 0, color: "#0f172a" }}>Áudio</h4>

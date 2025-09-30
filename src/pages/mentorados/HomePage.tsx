@@ -141,8 +141,8 @@ export default function HomePage() {
         <MentoradoHeader />
 
         <div className="mentorados-cards">
-          {/* CARD DO USUÁRIO */}
-          <div className="mentorados-card">
+          {/* CARD DO USUÁRIO - Usa a classe base mentorados-card, mas a responsividade é definida no CSS (grid-span-4) */}
+          <div className="mentorados-card grid-span-4">
             <img
               src={avatarSrc}
               alt="Usuário"
@@ -173,11 +173,11 @@ export default function HomePage() {
             <span className={badgeClass}>{usuario.accountType ?? ""}</span>
           </div>
 
-          {/* BOTÃO PARA ABRIR MODAL DE HEADHUNTERS */}
+          {/* BOTÃO PARA ABRIR MODAL DE HEADHUNTERS - Define a largura no grid (grid-span-4) */}
           <button
             type="button"
             onClick={() => setHeadhModalOpen(true)}
-            className="cv-upload-btn"
+            className="cv-upload-btn grid-span-4"
             style={{
               alignSelf: "flex-start",
               padding: "10px 14px",
@@ -186,6 +186,8 @@ export default function HomePage() {
               background: "#fff",
               cursor: "pointer",
               marginBottom: 12,
+              color: "#0f172a", // Corrigido para ser visível
+              fontWeight: 800,
             }}
             aria-haspopup="dialog"
             aria-expanded={headhModalOpen}
@@ -193,12 +195,18 @@ export default function HomePage() {
             Headhunters
           </button>
 
-          {/* === Cronograma (8 semanas) + Rotina Fixa === */}
-          <CronogramaSemanasTable />
-          <RotinaSemanalFixa />
+          {/* === Tabela única do SSI (12 semanas) - Ocupa a linha inteira (grid-span-12) === */}
+          <div className="grid-span-12">
+            <MentoradoSsiTabela />
+          </div>
 
-          {/* === Tabela única do SSI (12 semanas) === */}
-          <MentoradoSsiTabela />
+          {/* === Cronograma (8 semanas) + Rotina Fixa - Dividem a largura (grid-span-6) === */}
+          <div className="grid-span-6">
+            <CronogramaSemanasTable />
+          </div>
+          <div className="grid-span-6">
+            <RotinaSemanalFixa />
+          </div>
         </div>
 
         <img

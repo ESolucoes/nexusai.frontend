@@ -14,8 +14,8 @@ import {
   listMentoradoCurriculos,
   uploadCurriculos,
   uploadCurriculo,
-  downloadCurriculo,          // último (compat)
-  downloadCurriculoByName,    // por nome (novo)
+  downloadCurriculo,          // último (compat)
+  downloadCurriculoByName,    // por nome (novo)
   type MentoradoCurriculo,
   type MentoradoAudio,
 } from "../../lib/api";
@@ -261,7 +261,7 @@ export default function MentoresMentoradoHomePage() {
   const [search] = useSearchParams();
   const location = useLocation() as any;
 
-  // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
+  // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
   const usuarioIdParam = (search.get("id") || location?.state?.usuarioId || "").trim();
   const mentoradoIdParam = (search.get("mentoradoId") || location?.state?.mentoradoId || "").trim();
 
@@ -474,8 +474,8 @@ export default function MentoresMentoradoHomePage() {
           </div>
         ) : (
           <div className="mentorados-cards">
-            {/* CARD DO USUÁRIO */}
-            <div className="mentorados-card">
+            {/* CARD DO USUÁRIO - Usa a classe base mentorados-card, com a largura do grid (grid-span-4) */}
+            <div className="mentorados-card grid-span-4">
               <img
                 src={avatarSrc}
                 alt="Usuário"
@@ -506,8 +506,8 @@ export default function MentoresMentoradoHomePage() {
               <span className={badgeClass}>{usuario.accountType ?? ""}</span>
             </div>
 
-            {/* CARD DO CURRÍCULO - agora com LISTA */}
-            <div className={`mentorados-card mentorados-card--cv${hasCv ? " has-file" : ""}`}>
+            {/* CARD DO CURRÍCULO - Largura de 4 colunas (grid-span-4) */}
+            <div className={`mentorados-card mentorados-card--cv grid-span-4${hasCv ? " has-file" : ""}`}>
               <div
                 className="mentorados-cv-info"
                 style={{
@@ -518,13 +518,13 @@ export default function MentoresMentoradoHomePage() {
                   width: "100%",
                 }}
               >
-                <div>
+                <div style={{ flex: 1 }}>
                   <h3>Currículos</h3>
                   {!hasCv && <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>}
                   {hasCv && (
                     <>
                       {ultimoCv && (
-                        <p className="cv-file" style={{ marginBottom: 8 }}>
+                        <p className="cv-file" style={{ marginBottom: 8, color: '#fff' /* Corrigido para ser visível no card azul */ }}>
                           <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
                           <button
                             onClick={handleCvDownloadLatest}
@@ -539,8 +539,9 @@ export default function MentoresMentoradoHomePage() {
                         style={{
                           maxHeight: 180,
                           overflowY: "auto",
-                          borderTop: "1px solid #eee",
+                          borderTop: "1px solid #fff", /* Corrigido para ser visível no card azul */
                           paddingTop: 8,
+                          color: '#fff',
                         }}
                       >
                         {curriculos.map((c) => (
@@ -557,14 +558,14 @@ export default function MentoresMentoradoHomePage() {
                             <div
                               style={{
                                 fontSize: 14,
-                                color: "#333",
+                                color: "#fff", /* Corrigido para ser visível */
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
                               }}
                             >
                               {c.originalName || c.filename}
-                              <span style={{ color: "#888", fontSize: 12, marginLeft: 8 }}>
+                              <span style={{ color: "#eee", fontSize: 12, marginLeft: 8 }}>
                                 {new Date(c.savedAt).toLocaleString()}
                               </span>
                             </div>
@@ -582,7 +583,7 @@ export default function MentoresMentoradoHomePage() {
                 </div>
               </div>
 
-              <button className="cv-upload-btn" onClick={handleCvClick}>
+              <button className="cv-upload-btn" onClick={handleCvClick} style={{ marginTop: 'auto' }}>
                 Enviar Currículo(s) (PDF/DOC/DOCX)
               </button>
 
@@ -596,36 +597,22 @@ export default function MentoresMentoradoHomePage() {
               />
             </div>
 
-            {/* CARD DE ÁUDIO */}
-            <div
-              className="mentorados-card mentorados-card--audio"
-              style={{
-                position: "absolute",
-                top: 25,
-                left: "calc(var(--sidebar-w) + 725px)",
-                width: 420,
-                background: "#fff",
-                borderRadius: 12,
-                padding: 16,
-                boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h4 style={{ margin: 0 }}>Áudio</h4>
+            {/* CARD DE ÁUDIO - Largura de 4 colunas (grid-span-4) - Removido posicionamento absoluto */}
+            <div className="mentorados-card mentorados-card--audio grid-span-4" style={{ background: "#fff", color: "#0f172a", padding: 16, boxShadow: "0 6px 16px rgba(0,0,0,0.12)", gap: 10, flexDirection: 'column', alignItems: 'flex-start' }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: '100%' }}>
+                <h4 style={{ margin: 0, color: "#0f172a" }}>Áudio</h4>
                 <button
                   className="cv-upload-btn"
                   onClick={() => setAudioModalOpen(true)}
                   title="Gravar áudio do mentorado"
                   disabled={!usuario.mentoradoId}
+                  style={{ background: '#0d6efd', color: '#fff', border: 'none' }}
                 >
                   Gravar Áudio
                 </button>
               </div>
 
-              <div style={{ marginTop: 2 }}>
+              <div style={{ marginTop: 2, width: '100%' }}>
                 <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>Último Áudio</div>
                 {audios?.[0] ? (
                   <>
@@ -650,15 +637,23 @@ export default function MentoresMentoradoHomePage() {
               </div>
             </div>
 
-            {/* === Cronograma (8 semanas) + Rotina Fixa — usando o usuário do mentorado aberto === */}
-            <CronogramaSemanasTable usuarioIdOverride={usuario.id} />
-            <RotinaSemanalFixa usuarioIdOverride={usuario.id} />
+            {/* === Tabela única do SSI (12 semanas) - Ocupa a linha inteira (grid-span-12) === */}
+            <div className="grid-span-12">
+              <MentoradoSsiTabela />
+            </div>
+            
+            {/* Tabela de Vagas - Ocupa 12 colunas, se for o caso, ou ajusta-se. Deixando como 12 por agora.*/}
+            <div className="grid-span-12">
+                <VagasTable pageSize={10} />
+            </div>
 
-            {/* === Tabela única do SSI (12 semanas) === */}
-            <MentoradoSsiTabela />
-
-            {/* Tabela de Vagas */}
-            <VagasTable pageSize={10} />
+            {/* === Cronograma (8 semanas) + Rotina Fixa - Dividem a largura (grid-span-6) === */}
+            <div className="grid-span-6">
+              <CronogramaSemanasTable usuarioIdOverride={usuario.id} />
+            </div>
+            <div className="grid-span-6">
+              <RotinaSemanalFixa usuarioIdOverride={usuario.id} />
+            </div>
 
             <img
               src="/images/dashboard.png"

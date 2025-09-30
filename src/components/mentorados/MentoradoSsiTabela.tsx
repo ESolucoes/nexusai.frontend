@@ -85,7 +85,8 @@ export default function MentoradoSsiTabela() {
       setLoading(true);
       setError(null);
       try {
-        const base = await getMssTabelaVazia();
+        // ESSA FUNÇÃO ESTÁ CHAMANDO A ROTA ERRADA NO ARQUIVO "../../lib/api"
+        const base = await getMssTabelaVazia(); 
         // garante exatamente 12 colunas
         const normalized = base.map((r) => ({
           ...r,

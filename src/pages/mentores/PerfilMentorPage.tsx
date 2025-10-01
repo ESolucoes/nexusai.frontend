@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useLocation } from "react-router-dom"
 import Header from "../../components/layout/Header"
 import "../../styles/mentorados/home.css"
 import {
@@ -21,6 +22,7 @@ function resolveImageUrl(u?: string | null): string | null {
   if (!base) return `/${path}`
   return `${base}/${path}`
 }
+
 function cacheBust(u?: string | null): string | null {
   if (!u) return u ?? null
   const sep = u.includes("?") ? "&" : "?"
@@ -28,6 +30,10 @@ function cacheBust(u?: string | null): string | null {
 }
 
 export default function PerfilMentorPage() {
+  const location = useLocation()
+  const queryParams = new URLSearchParams(location.search)
+  const usuarioIdQuery = queryParams.get("usuarioId")
+
   const [usuario, setUsuario] = useState<{
     id?: string
     nome: string
@@ -40,7 +46,6 @@ export default function PerfilMentorPage() {
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", novaSenha: "" })
   const [vigencias, setVigencias] = useState<Array<{ id: string; inicio: string; fim: string | null }>>([])
   const [loading, setLoading] = useState(false)
-
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -51,12 +56,13 @@ export default function PerfilMentorPage() {
 
   useEffect(() => {
     ;(async () => {
-      const jwt = getToken()
-      const userId = pickUserIdFromJwt(jwt)
-      if (!jwt || !userId) {
+      let userId: string | null = usuarioIdQuery ?? pickUserIdFromJwt(getToken())
+
+      if (!userId) {
         setUsuario((p) => ({ ...p, nome: "Usuário", email: "" }))
         return
       }
+
       try {
         const data = await getUsuarioById(userId)
         setUsuario({
@@ -79,7 +85,7 @@ export default function PerfilMentorPage() {
         console.error("[PerfilMentor] carregar falhou:", err)
       }
     })()
-  }, [])
+  }, [usuarioIdQuery])
 
   const avatarFallback = "/images/avatar.png"
   const avatarSrc = usuario.avatarUrl?.trim() ? usuario.avatarUrl! : avatarFallback
@@ -183,7 +189,6 @@ export default function PerfilMentorPage() {
               <h2>{usuario.nome}</h2>
               <p>{usuario.email}</p>
             </div>
-            {/* badge opcional (mentor não tem Executive/FirstClass) */}
           </div>
 
           {/* EDITAR USUÁRIO */}
@@ -228,7 +233,7 @@ export default function PerfilMentorPage() {
             </div>
           </div>
 
-          {/* MENTOR (somente leitura do tipo) */}
+          {/* MENTOR */}
           <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
             <div style={{ width: "100%" }}>
               <h3 style={{ marginTop: 0 }}>Mentor</h3>

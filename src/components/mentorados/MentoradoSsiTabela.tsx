@@ -79,6 +79,11 @@ export default function MentoradoSsiTabela() {
   const [error, setError] = useState<string | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number>(0);
 
+  // Define as larguras desejadas para as colunas
+  const COL_SEMANA_WIDTH = 120; // Largura para cada coluna de semana
+  const COL_INDICADOR_WIDTH = 360; // Largura para a coluna fixa de indicador
+  const TABLE_TOTAL_WIDTH = COL_INDICADOR_WIDTH + (12 * COL_SEMANA_WIDTH);
+
   // carrega esqueleto
   useEffect(() => {
     (async () => {
@@ -86,7 +91,7 @@ export default function MentoradoSsiTabela() {
       setError(null);
       try {
         // ESSA FUNÇÃO ESTÁ CHAMANDO A ROTA ERRADA NO ARQUIVO "../../lib/api"
-        const base = await getMssTabelaVazia(); 
+        const base = await getMssTabelaVazia();
         // garante exatamente 12 colunas
         const normalized = base.map((r) => ({
           ...r,
@@ -179,12 +184,14 @@ export default function MentoradoSsiTabela() {
             Indicadores x Semanas (edite os valores; depois clique em “Classificar”)
           </div>
 
-          <div style={{ maxHeight: 560, overflow: "auto" }}>
+          {/* Container que permite rolagem vertical E horizontal */}
+          <div style={{ maxHeight: 560, overflow: "auto", overflowX: "auto" }}>
             <table
               style={{
-                width: "100%",
+                // Define a largura total para forçar a rolagem horizontal
+                width: TABLE_TOTAL_WIDTH, 
                 borderCollapse: "collapse",
-                tableLayout: "fixed",
+                // tableLayout: "fixed" foi removido para permitir o controle de largura por TH/TD
               }}
             >
               <thead>
@@ -192,17 +199,27 @@ export default function MentoradoSsiTabela() {
                   <th
                     style={{
                       padding: "8px 6px",
-                      width: 360,
+                      width: COL_INDICADOR_WIDTH, // Largura fixa
                       position: "sticky",
                       left: 0,
                       background: "#fff",
-                      zIndex: 1,
+                      zIndex: 2, // ZIndex maior para se sobrepor ao conteúdo que rola
                     }}
                   >
                     Indicador (meta)
                   </th>
                   {legend.map((lbl) => (
-                    <th key={lbl} style={{ padding: "8px 6px", fontSize: 12 }}>{lbl}</th>
+                    <th 
+                        key={lbl} 
+                        style={{ 
+                            padding: "8px 6px", 
+                            fontSize: 12,
+                            width: COL_SEMANA_WIDTH, // Define a nova largura para as colunas de semana
+                            minWidth: COL_SEMANA_WIDTH, // Garante que a coluna não diminua
+                        }}
+                    >
+                        {lbl}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -210,6 +227,7 @@ export default function MentoradoSsiTabela() {
               <tbody>
                 {loading && rows.length === 0 ? (
                   <tr>
+                    {/* colSpan ajustado para caber a nova largura da tabela */}
                     <td colSpan={1 + legend.length} style={{ padding: "12px 6px", color: "#64748b" }}>
                       Carregando…
                     </td>
@@ -235,8 +253,9 @@ export default function MentoradoSsiTabela() {
                           padding: "8px 6px",
                           position: "sticky",
                           left: 0,
+                          // Mantém a cor de fundo da célula do indicador em caso de hover/seleção/rolagem
                           background: selectedIdx === ridx ? "#f8fafc" : "#fff",
-                          zIndex: 1,
+                          zIndex: 2, 
                           fontSize: 14,
                           color: "#0f172a",
                           cursor: "pointer",
@@ -250,7 +269,15 @@ export default function MentoradoSsiTabela() {
                       </td>
 
                       {r.semanas.map((v, cidx) => (
-                        <td key={cidx} style={{ padding: "8px 6px", verticalAlign: "middle" }}>
+                        <td 
+                            key={cidx} 
+                            style={{ 
+                                padding: "8px 6px", 
+                                verticalAlign: "middle",
+                                width: COL_SEMANA_WIDTH, // Aplica a largura da célula
+                                minWidth: COL_SEMANA_WIDTH,
+                            }}
+                        >
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <input
                               value={Number.isFinite(v) ? String(v) : ""}
@@ -289,7 +316,7 @@ export default function MentoradoSsiTabela() {
         </div>
       </div>
 
-      {/* coluna direita: PAINEL DE TEXTOS */}
+      {/* coluna direita: PAINEL DE TEXTOS (inalterada) */}
       <aside
         style={{
           background: "#fff",

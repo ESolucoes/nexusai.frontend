@@ -1,6 +1,6 @@
 // frontend/src/pages/mentores/MentoresMentoradoHomePage.tsx
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import Header from "../../components/layout/Header";
 import "../../styles/mentorados/home.css";
 import {
@@ -9,8 +9,7 @@ import {
   listMentoradoAudios,
   uploadMentoradoAudio,
   downloadMentoradoAudio,
-  fetchAudioBlob,
-  // === Currículo ===
+  fetchAudioBlob, // === Currículo ===
   listMentoradoCurriculos,
   uploadCurriculos,
   uploadCurriculo,
@@ -63,9 +62,8 @@ function AudioRecorderModal(props: {
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const chunksRef = useRef<Blob[]>([]); // Descobre o melhor mime para gravar (tenta WAV, senão fallback)
 
-  // Descobre o melhor mime para gravar (tenta WAV, senão fallback)
   function pickBestMime(): string | undefined {
     const candidates = [
       "audio/wav",
@@ -87,7 +85,9 @@ function AudioRecorderModal(props: {
     if (open) {
       (async () => {
         try {
-          const temp = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const temp = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
           temp.getTracks().forEach((t) => t.stop());
           const devs = await navigator.mediaDevices.enumerateDevices();
           const inputs = devs.filter((d) => d.kind === "audioinput");
@@ -127,14 +127,16 @@ function AudioRecorderModal(props: {
       return;
     }
     const constraints: MediaStreamConstraints = selectedMic
-      ? ({ audio: { deviceId: { exact: selectedMic } } as MediaTrackConstraints })
+      ? { audio: { deviceId: { exact: selectedMic } } }
       : { audio: true };
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     mediaStreamRef.current = stream;
 
     const mimeType = pickBestMime();
-    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const rec = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
     chunksRef.current = [];
     rec.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -168,7 +170,10 @@ function AudioRecorderModal(props: {
       onSaved?.(audio);
       onClose();
     } catch (err: any) {
-      console.error("[Audio] upload falhou:", err?.response?.data ?? err?.message);
+      console.error(
+        "[Audio] upload falhou:",
+        err?.response?.data ?? err?.message
+      );
       alert(
         (err?.response?.data?.message as string) ||
           "Falha ao salvar o áudio. Verifique se o navegador permitiu o microfone."
@@ -190,6 +195,7 @@ function AudioRecorderModal(props: {
       }}
       onClick={onClose}
     >
+                 {" "}
       <div
         style={{
           width: 560,
@@ -200,39 +206,85 @@ function AudioRecorderModal(props: {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 style={{ margin: 0 }}>Gravar áudio do mentorado</h3>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
-          <label style={{ fontSize: 13, color: "#555", minWidth: 80 }}>Microfone:</label>
+                        <h3 style={{ margin: 0 }}>Gravar áudio do mentorado</h3>{" "}
+               {" "}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            marginTop: 12,
+          }}
+        >
+                             {" "}
+          <label style={{ fontSize: 13, color: "#555", minWidth: 80 }}>
+                        Microfone:          {" "}
+          </label>
+                             {" "}
           <select
             value={selectedMic}
             onChange={(e) => setSelectedMic(e.target.value)}
-            style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", borderRadius: 8 }}
+            style={{
+              flex: 1,
+              padding: "8px 10px",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+            }}
           >
+                                   {" "}
             {mics.length ? (
               mics.map((d, i) => (
                 <option key={d.deviceId || i} value={d.deviceId}>
-                  {d.label || `Microfone ${i + 1}`}
+                                                     {" "}
+                  {d.label || `Microfone ${i + 1}`}                {" "}
                 </option>
               ))
             ) : (
-              <option value="">Permita o microfone para listar os dispositivos</option>
+              <option value="">
+                                Permita o microfone para listar os dispositivos
+                             {" "}
+              </option>
             )}
+                                 {" "}
           </select>
+                           {" "}
         </div>
-
+                       {" "}
         <div style={{ display: "flex", gap: 10, margin: "14px 0" }}>
-          {!recording && <button onClick={start} className="cv-upload-btn">Iniciar Gravação</button>}
-          {recording && <button onClick={stop} className="cv-upload-btn">Parar</button>}
-          {blobUrl && !recording && <button onClick={save} className="cv-upload-btn">Salvar</button>}
-          <button onClick={onClose} className="cv-upload-btn">Fechar</button>
+                             {" "}
+          {!recording && (
+            <button onClick={start} className="cv-upload-btn">
+                            Iniciar Gravação            {" "}
+            </button>
+          )}
+                             {" "}
+          {recording && (
+            <button onClick={stop} className="cv-upload-btn">
+                            Parar            {" "}
+            </button>
+          )}
+                             {" "}
+          {blobUrl && !recording && (
+            <button onClick={save} className="cv-upload-btn">
+                            Salvar            {" "}
+            </button>
+          )}
+                             {" "}
+          <button onClick={onClose} className="cv-upload-btn">
+                        Fechar          {" "}
+          </button>
+                           {" "}
         </div>
-
+                       {" "}
         {blobUrl ? (
           <>
-            <audio src={blobUrl} controls style={{ width: "100%" }} />
+                                   {" "}
+            <audio src={blobUrl} controls style={{ width: "100%" }} />          
+             {" "}
             <div style={{ marginTop: 6 }}>
+                                         {" "}
               {/* Baixa a PRÉVIA local; extensão meramente cosmética para o preview */}
+                                         {" "}
               <a
                 href={blobUrl}
                 download={`gravacao-${Date.now()}${
@@ -244,14 +296,18 @@ function AudioRecorderModal(props: {
                 }`}
                 className="cv-download"
               >
-                Baixar prévia
+                                                Baixar prévia              {" "}
               </a>
+                                       {" "}
             </div>
+                                 {" "}
           </>
         ) : (
           <div style={{ fontSize: 13, color: "#999" }}>Sem prévia ainda…</div>
         )}
+                     {" "}
       </div>
+               {" "}
     </div>
   );
 }
@@ -259,11 +315,19 @@ function AudioRecorderModal(props: {
 /* ============================ PÁGINA ============================ */
 export default function MentoresMentoradoHomePage() {
   const [search] = useSearchParams();
-  const location = useLocation() as any;
+  const location = useLocation() as any; // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
+  const navigate = useNavigate(); // Hook de navegação // 1. Tenta pegar o ID do usuário (base para a página)
 
-  // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
-  const usuarioIdParam = (search.get("id") || location?.state?.usuarioId || "").trim();
-  const mentoradoIdParam = (search.get("mentoradoId") || location?.state?.mentoradoId || "").trim();
+  const usuarioIdParam = (
+    search.get("id") ||
+    location?.state?.usuarioId ||
+    ""
+  ).trim(); // 2. Tenta pegar o ID do mentorado diretamente (se for passado explicitamente)
+  const mentoradoIdParam = (
+    search.get("mentoradoId") ||
+    location?.state?.mentoradoId ||
+    ""
+  ).trim();
 
   const [usuario, setUsuario] = useState<{
     id?: string;
@@ -293,9 +357,8 @@ export default function MentoresMentoradoHomePage() {
     document.body.classList.remove("login-bg");
     document.body.classList.add("no-scroll");
     return () => document.body.classList.remove("no-scroll");
-  }, []);
+  }, []); // Carregar usuário + mentoradoId + audios + currículos
 
-  // Carregar usuário + mentoradoId + audios + currículos
   useEffect(() => {
     (async () => {
       if (!usuarioIdParam) {
@@ -303,32 +366,39 @@ export default function MentoresMentoradoHomePage() {
         return;
       }
       try {
-        const data = await getUsuarioById(usuarioIdParam);
+        const data = await getUsuarioById(usuarioIdParam); // === CORREÇÃO: Prioriza o mentoradoId do parâmetro, senão usa o que veio da API ===
         const mentoradoId = mentoradoIdParam || data.mentorado?.id || null;
         setUsuario({
           id: data.id,
           nome: data.nome ?? "Usuário",
           email: data.email ?? "",
           avatarUrl: resolveImageUrl(data.avatarUrl) ?? null, // normaliza
-          accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
+          accountType:
+            (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
           mentoradoId,
         });
 
         if (mentoradoId) {
           // Áudios
-          const resAud = await listMentoradoAudios(mentoradoId).catch(() => null);
-          if (resAud?.ok) setAudios(resAud.audios);
+          const resAud = await listMentoradoAudios(mentoradoId).catch(
+            () => null
+          );
+          if (resAud?.ok) setAudios(resAud.audios); // Currículos
 
-          // Currículos
-          const resCv = await listMentoradoCurriculos(mentoradoId).catch(() => null);
-          // Ordena a lista do mais recente para o mais antigo (o primeiro é o último enviado)
+          const resCv = await listMentoradoCurriculos(mentoradoId).catch(
+            () => null
+          ); // Ordena a lista do mais recente para o mais antigo (o primeiro é o último enviado)
           const sortedCv = resCv?.arquivos.sort(
-            (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+            (a, b) =>
+              new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
           );
           setCurriculos(sortedCv || []);
         }
       } catch (err) {
-        console.error("[MentoresMentoradoHomePage] GET /usuarios/{id} falhou:", err);
+        console.error(
+          "[MentoresMentoradoHomePage] GET /usuarios/{id} falhou:",
+          err
+        );
         setUsuario({
           id: undefined,
           nome: "Usuário",
@@ -340,9 +410,8 @@ export default function MentoresMentoradoHomePage() {
         setCurriculos([]);
       }
     })();
-  }, [usuarioIdParam, mentoradoIdParam]);
+  }, [usuarioIdParam, mentoradoIdParam]); // Prévia do último áudio (sempre atualiza quando a lista mudar)
 
-  // Prévia do último áudio (sempre atualiza quando a lista mudar)
   useEffect(() => {
     (async () => {
       if (!usuario.mentoradoId) return;
@@ -379,11 +448,17 @@ export default function MentoresMentoradoHomePage() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData);
+      const { data } = await api.post(
+        `/usuarios/${usuario.id}/avatar`,
+        formData
+      );
       if (data?.url) {
         const absolute = resolveImageUrl(String(data.url));
         const busted = cacheBust(absolute);
-        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }));
+        setUsuario((prev) => ({
+          ...prev,
+          avatarUrl: busted || absolute || data.url,
+        }));
       }
     } catch (err) {
       console.error("[MentoresMentoradoHomePage] upload avatar falhou:", err);
@@ -395,7 +470,6 @@ export default function MentoresMentoradoHomePage() {
   function handleCvClick() {
     cvInputRef.current?.click();
   }
-
   /**
    * REESCRITO: Função de upload de currículos.
    * - Suporta upload de 1 ou múltiplos arquivos.
@@ -416,23 +490,22 @@ export default function MentoresMentoradoHomePage() {
       } else {
         // Envia múltiplos arquivos (usa a função plural)
         await uploadCurriculos(usuario.mentoradoId, Array.from(files));
-      }
-      
-      // Força o refresh da lista e reordena (mais recente primeiro)
+      } // Força o refresh da lista e reordena (mais recente primeiro)
       const res = await listMentoradoCurriculos(usuario.mentoradoId);
       const sortedCv = res.arquivos.sort(
         (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
       );
       setCurriculos(sortedCv || []);
-
     } catch (err) {
-      console.error("[MentoresMentoradoHomePage] upload currículo falhou:", err);
+      console.error(
+        "[MentoresMentoradoHomePage] upload currículo falhou:",
+        err
+      );
       alert("Falha no upload do(s) currículo(s).");
     } finally {
       e.currentTarget.value = "";
     }
   }
-
   /**
    * REESCRITO: Função de download do currículo mais recente (usando a função de compatibilidade).
    */
@@ -449,7 +522,6 @@ export default function MentoresMentoradoHomePage() {
       alert("Falha ao baixar o currículo (último).");
     }
   }
-
   /**
    * REESCRITO: Função de download de um currículo específico pelo nome (nova função).
    */
@@ -465,6 +537,10 @@ export default function MentoresMentoradoHomePage() {
       );
       alert("Falha ao baixar o arquivo.");
     }
+  } // NOVA FUNÇÃO: Lida com o clique no botão "Ver Perfil"
+
+  function handleVerPerfilClick() {
+    navigate("/dashboard/mentorado/perfil"); // Navega para a rota de perfil
   }
 
   const badgeClass =
@@ -481,6 +557,7 @@ export default function MentoresMentoradoHomePage() {
 
   return (
     <div className="mentorados-home">
+                 {" "}
       <div
         className="mentorados-scroll"
         style={{
@@ -490,16 +567,19 @@ export default function MentoresMentoradoHomePage() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <Header />
-
+                        <Header />        {" "}
         {idInvalido ? (
           <div style={{ padding: 24, color: "#b00020" }}>
-            ID do usuário não informado. Volte e selecione um mentorado.
+                                    ID do usuário não informado. Volte e
+            selecione um mentorado.          {" "}
           </div>
         ) : (
           <div className="mentorados-cards">
+                                   {" "}
             {/* CARD DO USUÁRIO - Usa a classe base mentorados-card, com a largura do grid (grid-span-4) */}
+                                   {" "}
             <div className="mentorados-card grid-span-4">
+                                         {" "}
               <img
                 src={avatarSrc}
                 alt="Usuário"
@@ -516,6 +596,7 @@ export default function MentoresMentoradoHomePage() {
                   }
                 }}
               />
+                                         {" "}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -523,15 +604,54 @@ export default function MentoresMentoradoHomePage() {
                 accept="image/*"
                 onChange={handleAvatarChange}
               />
+                                         {" "}
               <div className="mentorados-user-info">
-                <h2>{usuario.nome}</h2>
-                <p>{usuario.email}</p>
+                                               {" "}
+                {/* === CORREÇÃO: Aplicação da fonte Montserrat no nome (conforme solicitação anterior) === */}
+                               {" "}
+                <h2 style={{ fontFamily: "Montserrat" }}>{usuario.nome}</h2>    
+                           {" "}
+                {/* === CORREÇÃO: Aplicação da fonte Montserrat-Italic no e-mail (conforme solicitação anterior) === */}
+                               {" "}
+                <p style={{ fontFamily: "Montserrat-Italic" }}>
+                                    {usuario.email}               {" "}
+                </p>
+                                               {" "}
+                {/* === BOTÃO "VER PERFIL" ADICIONADO AQUI === */}             
+                 {" "}
+                <button
+                  onClick={handleVerPerfilClick}
+                  className="cv-upload-btn" // Reutilizando o estilo cv-upload-btn para manter a aparência
+                  style={{
+                    marginTop: 10,
+                    padding: "8px 16px",
+                    fontSize: 14, // Estilos para o botão "Ver Perfil"
+                    background: "#5cb85c", // Um verde amigável para ação
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    width: "fit-content",
+                  }}
+                >
+                                    Ver Perfil                {" "}
+                </button>
+                                             {" "}
               </div>
-              <span className={badgeClass}>{usuario.accountType ?? ""}</span>
+                                         {" "}
+              <span className={badgeClass}>{usuario.accountType ?? ""}</span>  
+                       {" "}
             </div>
-
+                                   {" "}
             {/* CARD DO CURRÍCULO - Largura de 4 colunas (grid-span-4) - REESCRITO */}
-            <div className={`mentorados-card mentorados-card--cv grid-span-4${hasCv ? " has-file" : ""}`}>
+                                   {" "}
+            <div
+              className={`mentorados-card mentorados-card--cv grid-span-4${
+                hasCv ? " has-file" : ""
+              }`}
+            >
+                                         {" "}
               <div
                 className="mentorados-cv-info"
                 style={{
@@ -543,89 +663,147 @@ export default function MentoresMentoradoHomePage() {
                   height: "100%", // Ocupa todo o espaço vertical para o botão ir para o final
                 }}
               >
+                                               {" "}
                 <div>
-                  <h3>Currículos</h3>
-                  {!hasCv && <p className="cv-file cv-file--empty">Nenhum arquivo enviado</p>}
-                  
-                  {/* SEÇÃO DO ÚLTIMO CURRÍCULO (Foco) */}
+                                                      <h3>Currículos</h3>      
+                             {" "}
+                  {!hasCv && (
+                    <p className="cv-file cv-file--empty">
+                                            Nenhum arquivo enviado              
+                           {" "}
+                    </p>
+                  )}
+                                                     {" "}
+                  {/* SEÇÃO DO ÚLTIMO CURRÍCULO (Foco) */}                     
+                               {" "}
                   {ultimoCv && (
-                    <div style={{ marginBottom: 15, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.3)", color: '#fff' }}>
-                        <p className="cv-file" style={{ margin: 0 }}>
-                            <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
-                        </p>
-                        <button
-                            onClick={handleCvDownloadLatest}
-                            className="cv-download"
-                            style={{ marginTop: 8 }}
-                        >
-                            Baixar Último (Compat)
-                        </button>
+                    <div
+                      style={{
+                        marginBottom: 15,
+                        paddingBottom: 8,
+                        borderBottom: "1px solid rgba(255,255,255,0.3)",
+                        color: "#fff",
+                      }}
+                    >
+                                                                 {" "}
+                      <p className="cv-file" style={{ margin: 0 }}>
+                                                                       {" "}
+                        <strong>Último:</strong>                        {" "}
+                        {ultimoCv.originalName || ultimoCv.filename}            
+                                 {" "}
+                      </p>
+                                                                 {" "}
+                      <button
+                        onClick={handleCvDownloadLatest}
+                        className="cv-download"
+                        style={{ marginTop: 8 }}
+                      >
+                                                                        Baixar
+                        Último (Compat)                      {" "}
+                      </button>
+                                                               {" "}
                     </div>
                   )}
-
-                  {/* LISTA DOS CURRÍCULOS ANTERIORES */}
+                                                     {" "}
+                  {/* LISTA DOS CURRÍCULOS ANTERIORES */}                       
+                             {" "}
                   {curriculos.length > 1 && (
                     <div
                       style={{
                         maxHeight: 180,
                         overflowY: "auto",
                         paddingTop: 8,
-                        color: '#fff',
+                        color: "#fff",
                         fontSize: 14,
                       }}
                     >
-                      <h4 style={{ margin: "0 0 8px 0", color: '#fff' }}>Histórico ({curriculos.length} arquivos)</h4>
-                      {curriculos.map((c, index) => (
-                        // Pula o primeiro, que já é o "último"
-                        index > 0 && (
+                                                                 {" "}
+                      <h4 style={{ margin: "0 0 8px 0", color: "#fff" }}>
+                                                Histórico ({curriculos.length}{" "}
+                        arquivos)                      {" "}
+                      </h4>
+                                                                 {" "}
+                      {curriculos.map(
+                        (
+                          c,
+                          index // Pula o primeiro, que já é o "último"
+                        ) =>
+                          index > 0 && (
                             <div
-                                key={c.filename}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: 10,
-                                    padding: "6px 0",
-                                }}
+                              key={c.filename}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 10,
+                                padding: "6px 0",
+                              }}
                             >
-                                <div
-                                    style={{
-                                        flex: 1,
-                                        color: "#fff",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
+                                                                               
+                                       {" "}
+                              <div
+                                style={{
+                                  flex: 1,
+                                  color: "#fff",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                                                               
+                                                {c.originalName || c.filename}  
+                                                             {" "}
+                                <span
+                                  style={{
+                                    color: "#eee",
+                                    fontSize: 12,
+                                    marginLeft: 8,
+                                  }}
                                 >
-                                    {c.originalName || c.filename}
-                                    <span style={{ color: "#eee", fontSize: 12, marginLeft: 8 }}>
-                                        {new Date(c.savedAt).toLocaleDateString()}
-                                    </span>
-                                </div>
-                                <button
-                                    className="cv-download"
-                                    onClick={() => handleCvDownloadByName(c.filename)}
-                                >
-                                    Baixar
-                                </button>
+                                                                               
+                                                       {" "}
+                                  {new Date(c.savedAt).toLocaleDateString()}    
+                                                             {" "}
+                                </span>
+                                                                               
+                                             {" "}
+                              </div>
+                                                                               
+                                       {" "}
+                              <button
+                                className="cv-download"
+                                onClick={() =>
+                                  handleCvDownloadByName(c.filename)
+                                }
+                              >
+                                                                               
+                                                Baixar                          
+                                   {" "}
+                              </button>
+                                                                               
+                                     {" "}
                             </div>
-                        )
-                      ))}
+                          )
+                      )}
+                                                               {" "}
                     </div>
                   )}
+                                                   {" "}
                 </div>
-                
-                {/* BOTÃO DE UPLOAD */}
-                <button 
-                    className="cv-upload-btn" 
-                    onClick={handleCvClick} 
-                    style={{ marginTop: 'auto' }}
-                    disabled={!usuario.mentoradoId} // Desabilita se não tiver mentoradoId
+                                                {/* BOTÃO DE UPLOAD */}         
+                                     {" "}
+                <button
+                  className="cv-upload-btn"
+                  onClick={handleCvClick}
+                  style={{ marginTop: "auto" }}
+                  disabled={!usuario.mentoradoId} // Desabilita se não tiver mentoradoId
                 >
-                    Enviar Currículo(s) (PDF/DOC/DOCX)
+                                                      Enviar Currículo(s)
+                  (PDF/DOC/DOCX)                {" "}
                 </button>
+                                             {" "}
               </div>
-
+                                         {" "}
               <input
                 type="file"
                 ref={cvInputRef}
@@ -634,77 +812,148 @@ export default function MentoresMentoradoHomePage() {
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleCvChange}
               />
+                                       {" "}
             </div>
-
+                                   {" "}
             {/* CARD DE ÁUDIO - Largura de 4 colunas (grid-span-4) - Mantido */}
-            <div className="mentorados-card mentorados-card--audio grid-span-4" style={{ background: "#fff", color: "#0f172a", padding: 16, boxShadow: "0 6px 16px rgba(0,0,0,0.12)", gap: 10, flexDirection: 'column', alignItems: 'flex-start' }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: '100%' }}>
-                <h4 style={{ margin: 0, color: "#0f172a" }}>Áudio</h4>
+                                   {" "}
+            <div
+              className="mentorados-card mentorados-card--audio grid-span-4"
+              style={{
+                background: "#fff",
+                color: "#0f172a",
+                padding: 16,
+                boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
+                gap: 10,
+                flexDirection: "column",
+                alignItems: "flex-start",
+              }}
+            >
+                                         {" "}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                }}
+              >
+                                               {" "}
+                <h4 style={{ margin: 0, color: "#0f172a" }}>Áudio</h4>          
+                     {" "}
                 <button
                   className="cv-upload-btn"
                   onClick={() => setAudioModalOpen(true)}
                   title="Gravar áudio do mentorado"
                   disabled={!usuario.mentoradoId}
-                  style={{ background: '#0d6efd', color: '#fff', border: 'none' }}
+                  style={{
+                    background: "#0d6efd",
+                    color: "#fff",
+                    border: "none",
+                  }}
                 >
-                  Gravar Áudio
+                                                      Gravar Áudio              
+                   {" "}
                 </button>
+                                             {" "}
               </div>
-
-              <div style={{ marginTop: 2, width: '100%' }}>
-                <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>Último Áudio</div>
+                                         {" "}
+              <div style={{ marginTop: 2, width: "100%" }}>
+                                               {" "}
+                <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>
+                                    Último Áudio                {" "}
+                </div>
+                                               {" "}
                 {audios?.[0] ? (
                   <>
-                    <audio src={ultimoAudioSrc ?? ""} controls style={{ width: "100%" }} />
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
+                                                           {" "}
+                    <audio
+                      src={ultimoAudioSrc ?? ""}
+                      controls
+                      style={{ width: "100%" }}
+                    />
+                                                           {" "}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        marginTop: 4,
+                      }}
+                    >
+                                                                 {" "}
                       <span style={{ fontSize: 12, color: "#777" }}>
-                        {audios[0].filename} • {(audios[0].size / 1024).toFixed(1)} KB
+                                                                       {" "}
+                        {audios[0].filename} •                        {" "}
+                        {(audios[0].size / 1024).toFixed(1)} KB                
+                             {" "}
                       </span>
+                                                                 {" "}
                       <button
                         onClick={() =>
-                          audios?.[0] && downloadMentoradoAudio(usuario.mentoradoId!, audios[0])
+                          audios?.[0] &&
+                          downloadMentoradoAudio(
+                            usuario.mentoradoId!,
+                            audios[0]
+                          )
                         }
                         className="cv-download"
                       >
-                        Baixar
+                                                                        Baixar  
+                                           {" "}
                       </button>
+                                                               {" "}
                     </div>
+                                                         {" "}
                   </>
                 ) : (
-                  <div style={{ fontSize: 13, color: "#999" }}>Nenhuma gravação encontrada.</div>
+                  <div style={{ fontSize: 13, color: "#999" }}>
+                                        Nenhuma gravação encontrada.            
+                         {" "}
+                  </div>
                 )}
+                                             {" "}
               </div>
+                                       {" "}
             </div>
-
+                                   {" "}
             {/* === Tabela única do SSI (12 semanas) - Ocupa a linha inteira (grid-span-12) === */}
+                                   {" "}
             <div className="grid-span-12">
-              <MentoradoSsiTabela />
+                                          <MentoradoSsiTabela />            {" "}
             </div>
-            
-            {/* Tabela de Vagas - Ocupa 12 colunas, se for o caso, ou ajusta-se. Deixando como 12 por agora.*/}
-            <div className="grid-span-12">
-                <VagasTable pageSize={10} />
-            </div>
-
+                                   {" "}
             {/* === Cronograma (8 semanas) + Rotina Fixa - Dividem a largura (grid-span-6) === */}
+                                   {" "}
             <div className="grid-span-6">
-              <CronogramaSemanasTable usuarioIdOverride={usuario.id} />
+                                         {" "}
+              <CronogramaSemanasTable usuarioIdOverride={usuario.id} />        
+                 {" "}
             </div>
+                                   {" "}
             <div className="grid-span-6">
-              <RotinaSemanalFixa usuarioIdOverride={usuario.id} />
+                                         {" "}
+              <RotinaSemanalFixa usuarioIdOverride={usuario.id} />             {" "}
+                         {" "}
             </div>
-
+                       {" "}
+            {/* Tabela de Vagas MOVIDA PARA O FINAL, antes da imagem de rodapé. Ocupa 12 colunas. */}
+                                   {" "}
+            <div className="grid-span-12">
+                                          <VagasTable pageSize={10} />          
+               {" "}
+            </div>
+                                   {" "}
             <img
               src="/images/dashboard.png"
               alt=""
               className="mentorados-center-image"
               draggable={false}
-            />
+            />{" "}
           </div>
-        )}
-      </div>
-
-      {/* MODAL DE ÁUDIO */}
+        )}{" "}
+      </div>{" "}
+      {/* MODAL DE ÁUDIO */}{" "}
       {usuario.mentoradoId && (
         <AudioRecorderModal
           open={audioModalOpen}
@@ -715,7 +964,7 @@ export default function MentoresMentoradoHomePage() {
             setAudios((prev) => [audio, ...prev]);
           }}
         />
-      )}
+      )}{" "}
     </div>
   );
 }

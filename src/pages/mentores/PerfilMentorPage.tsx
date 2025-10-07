@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router-dom"
 import Header from "../../components/layout/Header"
-import "../../styles/mentorados/home.css"
+import "../../styles/mentorados/perfil.css"
 import {
   api,
   getToken,
@@ -165,12 +165,13 @@ export default function PerfilMentorPage() {
 
   return (
     <div className="mentorados-home">
-      <div className="mentorados-scroll" style={{ height: "100vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
+      {/* Container sem scroll interno */}
+      <div className="mentorados-scroll">
         <Header />
 
         <div className="mentorados-cards">
-          {/* CARD USUÁRIO (avatar + nome/email) */}
-          <div className="mentorados-card">
+          {/* CARD USUÁRIO */}
+          <div className="mentorados-card grid-span-12">
             <img
               src={avatarSrc}
               alt="Usuário"
@@ -192,7 +193,7 @@ export default function PerfilMentorPage() {
           </div>
 
           {/* EDITAR USUÁRIO */}
-          <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
+          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
             <div style={{ width: "100%" }}>
               <h3 style={{ marginTop: 0 }}>Editar Usuário</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -208,7 +209,7 @@ export default function PerfilMentorPage() {
           </div>
 
           {/* VIGÊNCIA */}
-          <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
+          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
             <div style={{ width: "100%" }}>
               <h3 style={{ marginTop: 0 }}>Vigência</h3>
               <div style={{ marginBottom: 8 }}>
@@ -217,7 +218,8 @@ export default function PerfilMentorPage() {
                   {ativa ? "Desativar" : "Ativar agora"}
                 </button>
               </div>
-              <div style={{ maxHeight: 220, overflowY: "auto", borderTop: "1px solid #eee", paddingTop: 8 }}>
+              {/* LISTA DE VIGÊNCIAS SEM SCROLL INTERNO */}
+              <div style={{ borderTop: "1px solid #eee", paddingTop: 8 }}>
                 {vigencias.map(v => (
                   <div key={v.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", alignItems: "center", gap: 8, marginBottom: 6 }}>
                     <label style={{ fontSize: 12, color: "#555" }}>Início</label>
@@ -234,7 +236,7 @@ export default function PerfilMentorPage() {
           </div>
 
           {/* MENTOR */}
-          <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
+          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
             <div style={{ width: "100%" }}>
               <h3 style={{ marginTop: 0 }}>Mentor</h3>
               <p style={{ margin: 0 }}>Tipo: <strong>{usuario.mentorTipo ?? "—"}</strong></p>
@@ -243,7 +245,7 @@ export default function PerfilMentorPage() {
           </div>
 
           {/* EXCLUIR USUÁRIO */}
-          <div className="mentorados-card" style={{ background: "#fff", color: "#b00020" }}>
+          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#b00020" }}>
             <div style={{ width: "100%" }}>
               <h3 style={{ marginTop: 0, color: "#b00020" }}>Excluir Usuário</h3>
               <p style={{ marginTop: 0, color: "#7a0015" }}>Esta ação é irreversível.</p>

@@ -1,0 +1,224 @@
+/* ======= styles/mentorados/home.css ======= */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
+
+:root {
+  --azul: #0d6efd;
+  --text: #0f172a;
+  --text-dim: #334155;
+  --sidebar-w: 260px;
+  --radius: 12px;
+}
+
+/* BLOQUEAR SOMENTE O SCROLL HORIZONTAL (global) */
+html, body { 
+  overflow-x: hidden !important; 
+  max-width: 100%;
+}
+
+* { box-sizing: border-box; }
+
+body, .mentorados-home {
+  font-family: 'Open Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans';
+}
+
+body.no-scroll { overflow: hidden; }
+
+/* container */
+.mentorados-home {
+  min-height: 100vh;
+  width: 100vw;
+  padding-left: var(--sidebar-w);
+  background: #fff;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* grid de cards */
+.mentorados-cards {
+  position: relative;
+  z-index: 2;
+  padding: 24px 20px 0 20px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(12, 1fr);
+  overflow-x: hidden;
+}
+
+/* Quebras responsivas */
+@media (max-width: 1200px) { .mentorados-cards { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 960px) { .mentorados-cards { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 720px) { .mentorados-cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .mentorados-cards { grid-template-columns: 1fr; } }
+
+/* * NOVAS CLASSES DE GRID (para aplicar em divs que envolvem tabelas e cards) *
+ * Isso evita que o grid do .mentorados-card afete os outros componentes.
+ */
+.grid-span-12 { grid-column: span 12; }
+.grid-span-6 { grid-column: span 6; }
+.grid-span-4 { grid-column: span 4; }
+.grid-span-2 { grid-column: span 2; }
+
+/* Quebras responsivas para as NOVAS CLASSES DE GRID */
+@media (max-width: 1440px) { 
+    .grid-span-4 { grid-column: span 6; }
+    .grid-span-6 { grid-column: span 6; }
+}
+@media (max-width: 1200px) { 
+    /* .mentorados-cards: grid-template-columns: repeat(6, 1fr); (já estava) */
+    .grid-span-12 { grid-column: span 6; } /* Ocupa 100% no grid de 6 colunas */
+    .grid-span-6 { grid-column: span 3; }
+    .grid-span-4 { grid-column: span 3; }
+}
+@media (max-width: 960px) { 
+    /* .mentorados-cards: grid-template-columns: repeat(4, 1fr); (já estava) */
+    .grid-span-12 { grid-column: span 4; } /* Ocupa 100% no grid de 4 colunas */
+    .grid-span-6 { grid-column: span 2; }
+    .grid-span-4 { grid-column: span 2; }
+}
+@media (max-width: 720px) { 
+    /* .mentorados-cards: grid-template-columns: repeat(2, 1fr); (já estava) */
+    .grid-span-12 { grid-column: span 2; }
+    .grid-span-6 { grid-column: span 2; }
+    .grid-span-4 { grid-column: span 2; }
+}
+@media (max-width: 520px) { 
+    /* .mentorados-cards: grid-template-columns: 1fr; (já estava) */
+    .grid-span-12 { grid-column: span 1; }
+    .grid-span-6 { grid-column: span 1; }
+    .grid-span-4 { grid-column: span 1; }
+}
+
+
+/* Card principal (Usuário e Currículo/Áudio nos Mentores) */
+.mentorados-card {
+  /* REMOVIDO: grid-column: span 4; -> Agora é aplicado via .grid-span-4 */
+  min-height: 110px;
+  background: #0d6efd;
+  color: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+/* REMOVIDO: as quebras responsivas de .mentorados-card. São substituídas pelas classes .grid-span-X. */
+
+
+.mentorados-avatar {
+  width: 62px; 
+  height: 62px; 
+  border-radius: 50%; 
+  object-fit: cover; 
+  border: 3px solid #fff;
+}
+.mentorados-user-info { 
+  flex: 1; 
+  min-width: 0; 
+}
+.mentorados-user-info h2 {
+  margin: 0; 
+  font-size: 18px; 
+  font-weight: 800; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}
+.mentorados-user-info p {
+  margin: 4px 0 0; 
+  font-size: 14px; 
+  opacity: .95; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}
+
+/* Card de currículo tem altura ajustável, mas manter cores */
+.mentorados-card--cv {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 200px; /* Ajuste se necessário, para evitar colapsar */
+}
+.mentorados-card--cv h3 { 
+  color: #fff; 
+}
+.mentorados-card--cv .cv-file, .mentorados-card--cv .cv-file--empty {
+  color: #eee;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.mentorados-card--cv .cv-download {
+  color: #0d6efd !important;
+  background: #fff !important;
+  border: 1px solid #fff !important;
+  padding: 2px 6px !important;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+}
+
+
+.mentorados-badge {
+  color: #fff; 
+  font-weight: 800; 
+  font-size: 12px; 
+  padding: 6px 10px; 
+  border-radius: 999px; 
+  white-space: nowrap;
+}
+.badge--executive { background: #2e7d32; }
+.badge--firstclass { background: #a4825c; }
+.hidden { display: none; }
+
+/* imagem de fundo (logo) – decorativa, atrás */
+.mentorados-center-image {
+  position: fixed;
+  z-index: 1;
+  top: 55%;
+  left: calc(50% + (var(--sidebar-w) / 2));
+  transform: translate(-50%, -50%);
+  height: auto; 
+  width: clamp(480px, 40vw, 1200px);
+  opacity: .16;
+  pointer-events: none; 
+  user-select: none;
+}
+
+/* ====== Botões azuis (sem tocar na tabela do SSI) ====== */
+.mentorados-home .cv-upload-btn {
+  /* Corrigindo o botão de Headhunters que estava na HomePage com fundo branco */
+  background: #fff;
+  border: 1px solid #ddd;
+  color: var(--text);
+  font-weight: 800;
+  border-radius: 10px;
+  height: 40px;
+  padding: 0 14px;
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+/* Ajusta o botão azul (enviar CV, gravar áudio) */
+.mentorados-card .cv-upload-btn,
+.mentorados-home .cv-upload-btn.blue-btn { /* Adicione blue-btn na HomePage caso queira o botão azul */
+  background: var(--azul) !important;
+  border: 1px solid var(--azul) !important;
+  color: #fff !important;
+  font-weight: 800;
+}
+
+
+.mentorados-home .cv-upload-btn:hover {
+  filter: brightness(0.95);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+.mentorados-home .cv-upload-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Dark mode */
+body.dark-mode .mentorados-home { 
+  background: #121212; 
+}

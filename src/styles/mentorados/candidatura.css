@@ -1,0 +1,139 @@
+/* ======= styles/mentorados/candidatura.css ======= */
+@import url('[https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap)');
+
+:root {
+--azul: #0d6efd;
+--text: #0f172a;
+--radius: 12px;
+}
+
+body, .mentorados-home {
+font-family: 'Open Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans';
+margin: 0;
+padding: 0;
+background: #f5f7fa;
+}
+
+/* ==================== Home ==================== */
+.mentorados-home {
+min-height: 100vh;
+display: flex;
+justify-content: center; /* centraliza horizontal */
+padding: 40px 16px;
+position: relative;
+overflow-x: hidden; /* previne corte horizontal */
+overflow-y: auto;
+}
+
+/* ==================== Imagem de fundo decorativa ==================== */
+.mentorados-center-image {
+position: fixed;
+z-index: 1;
+top: 55%;
+left: calc(50% + 130px); /* ajusta de acordo com sidebar */
+transform: translate(-50%, -50%);
+width: clamp(480px, 40vw, 1200px);
+opacity: .16;
+pointer-events: none;
+user-select: none;
+}
+
+/* ==================== Card do Formulário ==================== */
+.mentorados-card {
+position: relative;
+z-index: 2;
+background: #fff;
+color: var(--text);
+border-radius: var(--radius);
+box-shadow: 0 12px 32px rgba(0,0,0,.15);
+padding: 36px 40px;
+width: 100%;
+max-width: 700px; /* card maior mas não corta */
+display: flex;
+flex-direction: column;
+gap: 24px;
+box-sizing: border-box;
+}
+
+.mentorados-card h3 {
+margin-top: 0;
+font-weight: 800;
+font-size: 24px;
+text-align: center;
+color: var(--azul);
+}
+
+/* ==================== Formulário ==================== */
+.mentorados-card .form-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 20px;
+width: 100%;
+box-sizing: border-box;
+}
+
+.mentorados-card input {
+padding: 14px 18px;
+font-size: 16px;
+border-radius: var(--radius);
+border: 1px solid #ccc;
+outline: none;
+transition: border-color 0.2s ease, box-shadow 0.2s ease;
+width: 100%;
+box-sizing: border-box;
+}
+
+.mentorados-card input:focus {
+border-color: var(--azul);
+box-shadow: 0 0 8px rgba(13, 110, 253, 0.35);
+}
+
+.mentorados-card input[type="number"] {
+-moz-appearance: textfield;
+}
+
+.mentorados-card input::-webkit-outer-spin-button,
+.mentorados-card input::-webkit-inner-spin-button {
+-webkit-appearance: none;
+margin: 0;
+}
+
+.full-span {
+grid-column: span 2;
+}
+
+/* ==================== Botão de Enviar ==================== */
+.mentorados-card button {
+background: var(--azul);
+border: none;
+color: #fff;
+font-weight: 700;
+border-radius: var(--radius);
+padding: 14px 24px;
+font-size: 16px;
+cursor: pointer;
+transition: 0.2s all ease;
+width: 100%;
+box-sizing: border-box;
+}
+
+.mentorados-card button:hover {
+filter: brightness(0.95);
+}
+
+.mentorados-card button:disabled {
+opacity: 0.6;
+cursor: not-allowed;
+}
+
+/* ==================== Mobile ==================== */
+@media (max-width: 520px) {
+.mentorados-card .form-grid {
+grid-template-columns: 1fr;
+gap: 16px;
+}
+
+.full-span {
+grid-column: span 1;
+}
+}

@@ -19,6 +19,9 @@ const MentoradoAgentesPage = lazy(() => import('../pages/mentorados/AgentesPage'
 
 const MentoresMentoradoHomePage = lazy(() => import('../pages/mentores/MentoresMentoradoHomePage'))
 
+// NOVA: Candidatura
+const CandidaturaPage = lazy(() => import('../pages/mentorados/CandidaturaPage'))
+
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
@@ -44,4 +47,7 @@ export const router = createBrowserRouter([
 
   // NOVA: Perfil do Mentorado
   { path: '/dashboard/mentorado/perfil', element: <PerfilMentoradoPage /> },
+
+  // NOVA: Candidatura
+  { path: '/dashboard/mentorado/candidatura', element: <CandidaturaPage /> },
 ])

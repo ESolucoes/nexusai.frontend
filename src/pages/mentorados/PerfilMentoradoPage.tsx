@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import MentoradoHeader from "../../components/layout/MentoradoHeader";
-import "../../styles/mentorados/home.css";
+import "../../styles/mentorados/perfil.css";
 import {
   api,
   getToken,
@@ -20,36 +20,19 @@ function resolveImageUrl(u?: string | null): string | null {
   if (!base) return `/${path}`;
   return `${base}/${path}`;
 }
+
 function cacheBust(u?: string | null): string | null {
   if (!u) return u ?? null;
   const sep = u.includes("?") ? "&" : "?";
   return `${u}${sep}t=${Date.now()}`;
 }
 
-/**
- * PerfilMentoradoPage
- * - Comportamento original: carrega usuário logado via JWT (getUsuarioById(userId))
- * - NOVO: se receber ?mentoradoId=... (ou location.state.mentoradoId) tenta carregar o mentorado específico.
- *   - se carregar com sucesso, preenche usuario + mentorado com os dados do mentorado.
- *   - se falhar, mantém fallback de carregar o usuário logado (comportamento anterior).
- *
- * Observação: tenta buscar mentorado em /mentorados/:id via api.get. Se sua API tiver outro endpoint
- * para obter mentorado (por ex. /mentorados/{id}/full ou getMentoradoById helper), adapte a chamada abaixo.
- */
-
 export default function PerfilMentoradoPage() {
   const [search] = useSearchParams();
   const location = useLocation() as any;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [usuario, setUsuario] = useState<{
-    id?: string;
-    nome: string;
-    email: string;
-    telefone?: string | null;
-    avatarUrl?: string | null;
-    mentoradoId?: string | null;
-    accountType: "Executive" | "First Class" | null;
-  }>({
+  const [usuario, setUsuario] = useState<any>({
     id: undefined,
     nome: "Carregando...",
     email: "",
@@ -66,7 +49,6 @@ export default function PerfilMentoradoPage() {
     novaSenha: "",
   });
 
-  // Form PutMentoradoDto
   const [mentForm, setMentForm] = useState({
     tipo: "" as "Executive" | "First Class" | "",
     rg: "",
@@ -85,7 +67,6 @@ export default function PerfilMentoradoPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     document.body.classList.remove("login-bg");
@@ -95,17 +76,15 @@ export default function PerfilMentoradoPage() {
 
   useEffect(() => {
     (async () => {
-      // tenta obter mentoradoId da query string ou location.state
       const mentoradoIdParam =
         (search.get("mentoradoId") || location?.state?.mentoradoId || "")?.toString().trim() ||
         null;
 
-      // função que carrega usuário logado (comportamento original)
       async function loadCurrentUser() {
         const jwt = getToken();
         const userId = pickUserIdFromJwt(jwt);
         if (!jwt || !userId) {
-          setUsuario((p) => ({ ...p, nome: "Usuário", email: "" }));
+          setUsuario((p: any) => ({ ...p, nome: "Usuário", email: "" }));
           return;
         }
         try {
@@ -147,24 +126,10 @@ export default function PerfilMentoradoPage() {
         }
       }
 
-      // Se vier mentoradoId, tentamos carregar o mentorado específico primeiro
       if (mentoradoIdParam) {
         try {
-          // *** Ajuste aqui se seu endpoint for diferente. 
-          // Ex.: api.get(`/mentorados/${mentoradoIdParam}/full`) ou usar helper getMentoradoById.
           const res = await api.get(`/mentorados/${encodeURIComponent(mentoradoIdParam)}`);
           const data = res?.data;
-
-          /**
-           * POSSÍVEIS formatos de resposta (tente cobrir os mais comuns):
-           * - { usuario: { id, nome, email, avatarUrl, telefone }, ...mentoradoFields }
-           * - { id: mentoradoId, usuarioId: '...', usuario: { ... }, ... }
-           * - { usuarioId: '...', usuario: { ... }, ... }
-           * - ou retorno direto do mentorado com campos 'usuario*' embutidos
-           *
-           * Aqui tentamos detectar `data.usuario` primeiro; se não, tentamos maps razoáveis;
-           * se nada bater, fazemos fallback para carregar o usuário logado (comportamento original).
-           */
           let usuarioFromMentorado: any = null;
           let mentoradoData: any = null;
 
@@ -173,49 +138,22 @@ export default function PerfilMentoradoPage() {
               usuarioFromMentorado = data.usuario;
               mentoradoData = { ...data, usuario: undefined };
             } else if (data.user) {
-              // alternativa comum
               usuarioFromMentorado = data.user;
               mentoradoData = { ...data, user: undefined };
-            } else if (data.usuarioId && data.usuario) {
-              usuarioFromMentorado = data.usuario;
-              mentoradoData = { ...data, usuario: undefined };
-            } else if (data.usuarioId && !data.usuario) {
-              // talvez endpoint retorne apenas mentorado e precise buscar usuario separado
-              try {
-                const ures = await api.get(`/usuarios/${data.usuarioId}`);
-                usuarioFromMentorado = ures.data;
-                mentoradoData = data;
-              } catch {
-                usuarioFromMentorado = null;
-              }
             } else if (data.nome && data.email) {
-              // se a resposta já é um usuário (alguns endpoints podem retornar isso)
               usuarioFromMentorado = data;
               mentoradoData = {};
-            } else {
-              // fallback: se a API retornou um wrapper { data: {...} }
-              if (data.data && typeof data.data === "object") {
-                const inner = data.data;
-                if (inner.usuario) {
-                  usuarioFromMentorado = inner.usuario;
-                  mentoradoData = { ...inner, usuario: undefined };
-                } else if (inner.nome && inner.email) {
-                  usuarioFromMentorado = inner;
-                  mentoradoData = {};
-                }
-              }
             }
           }
 
           if (usuarioFromMentorado) {
-            // preenche UI com dados do mentorado (substitui o comportamento padrão neste caso)
             setUsuario({
               id: usuarioFromMentorado.id,
               nome: usuarioFromMentorado.nome ?? "Usuário",
               email: usuarioFromMentorado.email ?? "",
               telefone: (usuarioFromMentorado as any).telefone ?? "",
               avatarUrl: resolveImageUrl(usuarioFromMentorado.avatarUrl) ?? null,
-              mentoradoId: mentoradoIdParam, // garante que mentoradoId esteja presente
+              mentoradoId: mentoradoIdParam,
               accountType: (usuarioFromMentorado.mentorado?.tipo as any) ?? (usuarioFromMentorado.tipo as any) ?? null,
             });
 
@@ -226,7 +164,6 @@ export default function PerfilMentoradoPage() {
               novaSenha: "",
             });
 
-            // preenche mentForm a partir do mentoradoData ou dos campos aninhados
             const md = mentoradoData || usuarioFromMentorado.mentorado || usuarioFromMentorado;
             setMentForm({
               tipo: (md.tipo as any) || "",
@@ -244,33 +181,22 @@ export default function PerfilMentoradoPage() {
               pretensaoPj: md.pretensaoPj || "",
               linkedin: md.linkedin || "",
             });
-            return; // sucesso, já carregou mentorado
+            return;
           }
 
-          // se chegamos aqui, a tentativa de ler mentorado pelo id não trouxe um usuário válido:
-          console.warn("[PerfilMentorado] resposta /mentorados/:id inesperada, fallback para usuário logado.", res?.data);
-          await loadCurrentUser(); // fallback
+          await loadCurrentUser();
         } catch (err) {
-          console.warn("[PerfilMentorado] falha ao carregar mentorado por mentoradoId:", err);
-          // fallback para comportamento original (carregar usuário logado)
+          console.warn("[PerfilMentorado] falha ao carregar mentorado:", err);
           await loadCurrentUser();
         }
       } else {
-        // sem mentoradoId: comportamento original (usuário logado)
         await loadCurrentUser();
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intencional: roda uma vez na montagem
+  }, []);
 
   const avatarFallback = "/images/avatar.png";
   const avatarSrc = usuario.avatarUrl?.trim() ? usuario.avatarUrl! : avatarFallback;
-  const badgeClass =
-    usuario.accountType === "Executive"
-      ? "mentorados-badge badge--executive"
-      : usuario.accountType === "First Class"
-      ? "mentorados-badge badge--firstclass"
-      : "mentorados-badge hidden";
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!usuario.id) return;
@@ -283,7 +209,7 @@ export default function PerfilMentoradoPage() {
       if (data?.url) {
         const absolute = resolveImageUrl(String(data.url));
         const busted = cacheBust(absolute);
-        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }));
+        setUsuario((prev: typeof usuario) => ({ ...prev, avatarUrl: busted || absolute || data.url }));
       }
     } catch (err) {
       console.error("[PerfilMentorado] upload avatar falhou:", err);
@@ -340,12 +266,13 @@ export default function PerfilMentoradoPage() {
 
   return (
     <div className="mentorados-home">
-      <div className="mentorados-scroll" style={{ height: "100vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
+      {/* REMOVIDO height e overflow do scroll interno */}
+      <div className="mentorados-scroll">
         <MentoradoHeader />
 
         <div className="mentorados-cards">
           {/* CARD DO USUÁRIO */}
-          <div className="mentorados-card">
+          <div className="mentorados-card grid-span-12">
             <img
               src={avatarSrc}
               alt="Usuário"
@@ -364,56 +291,47 @@ export default function PerfilMentoradoPage() {
               <h2>{usuario.nome}</h2>
               <p>{usuario.email}</p>
             </div>
-            <span className={badgeClass}>{usuario.accountType ?? ""}</span>
           </div>
 
           {/* EDITAR USUÁRIO */}
-          <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
-            <div style={{ width: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Editar Usuário</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <input placeholder="Nome" value={userForm.nome} onChange={(e) => setUserForm((s) => ({ ...s, nome: e.target.value }))} />
-                <input placeholder="E-mail" value={userForm.email} onChange={(e) => setUserForm((s) => ({ ...s, email: e.target.value }))} />
-                <input placeholder="Telefone" value={userForm.telefone} onChange={(e) => setUserForm((s) => ({ ...s, telefone: e.target.value }))} />
-                <input placeholder="Nova senha (opcional)" type="password" value={userForm.novaSenha} onChange={(e) => setUserForm((s) => ({ ...s, novaSenha: e.target.value }))} />
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <button className="cv-upload-btn" onClick={salvarUsuario} disabled={loading}>
-                  Salvar
-                </button>
-              </div>
+          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
+            <h3 style={{ marginTop: 0 }}>Editar Usuário</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <input placeholder="Nome" value={userForm.nome} onChange={(e) => setUserForm((s) => ({ ...s, nome: e.target.value }))} />
+              <input placeholder="E-mail" value={userForm.email} onChange={(e) => setUserForm((s) => ({ ...s, email: e.target.value }))} />
+              <input placeholder="Telefone" value={userForm.telefone} onChange={(e) => setUserForm((s) => ({ ...s, telefone: e.target.value }))} />
+              <input placeholder="Nova senha (opcional)" type="password" value={userForm.novaSenha} onChange={(e) => setUserForm((s) => ({ ...s, novaSenha: e.target.value }))} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <button className="cv-upload-btn" onClick={salvarUsuario} disabled={loading}>Salvar</button>
             </div>
           </div>
 
           {/* MENTORADO */}
-          <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
-            <div style={{ width: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Mentorado</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <select value={mentForm.tipo} onChange={(e) => setMentForm((s) => ({ ...s, tipo: e.target.value as any }))}>
-                  <option value="">— Tipo —</option>
-                  <option value="Executive">Executive</option>
-                  <option value="First Class">First Class</option>
-                </select>
-                <input placeholder="Cargo Objetivo" value={mentForm.cargoObjetivo} onChange={(e) => setMentForm((s) => ({ ...s, cargoObjetivo: e.target.value }))} />
-                <input placeholder="RG" value={mentForm.rg} onChange={(e) => setMentForm((s) => ({ ...s, rg: e.target.value }))} />
-                <input placeholder="CPF" value={mentForm.cpf} onChange={(e) => setMentForm((s) => ({ ...s, cpf: e.target.value }))} />
-                <input type="date" placeholder="Data de Nascimento" value={mentForm.dataNascimento} onChange={(e) => setMentForm((s) => ({ ...s, dataNascimento: e.target.value }))} />
-                <input placeholder="LinkedIn (URL)" value={mentForm.linkedin} onChange={(e) => setMentForm((s) => ({ ...s, linkedin: e.target.value }))} />
-                <input placeholder="Rua" value={mentForm.rua} onChange={(e) => setMentForm((s) => ({ ...s, rua: e.target.value }))} />
-                <input placeholder="Número" value={mentForm.numero} onChange={(e) => setMentForm((s) => ({ ...s, numero: e.target.value }))} />
-                <input placeholder="Complemento" value={mentForm.complemento} onChange={(e) => setMentForm((s) => ({ ...s, complemento: e.target.value }))} />
-                <input placeholder="CEP" value={mentForm.cep} onChange={(e) => setMentForm((s) => ({ ...s, cep: e.target.value }))} />
-                <input placeholder="Pretensão CLT" value={mentForm.pretensaoClt} onChange={(e) => setMentForm((s) => ({ ...s, pretensaoClt: e.target.value }))} />
-                <input placeholder="Pretensão PJ" value={mentForm.pretensaoPj} onChange={(e) => setMentForm((s) => ({ ...s, pretensaoPj: e.target.value }))} />
-                <input placeholder="Nome do Pai" value={mentForm.nomePai} onChange={(e) => setMentForm((s) => ({ ...s, nomePai: e.target.value }))} />
-                <input placeholder="Nome da Mãe" value={mentForm.nomeMae} onChange={(e) => setMentForm((s) => ({ ...s, nomeMae: e.target.value }))} />
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <button className="cv-upload-btn" onClick={salvarMentorado} disabled={!usuario.mentoradoId}>
-                  Salvar
-                </button>
-              </div>
+          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
+            <h3 style={{ marginTop: 0 }}>Mentorado</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <select value={mentForm.tipo} onChange={(e) => setMentForm((s) => ({ ...s, tipo: e.target.value as any }))}>
+                <option value="">— Tipo —</option>
+                <option value="Executive">Executive</option>
+                <option value="First Class">First Class</option>
+              </select>
+              <input placeholder="Cargo Objetivo" value={mentForm.cargoObjetivo} onChange={(e) => setMentForm((s) => ({ ...s, cargoObjetivo: e.target.value }))} />
+              <input placeholder="RG" value={mentForm.rg} onChange={(e) => setMentForm((s) => ({ ...s, rg: e.target.value }))} />
+              <input placeholder="CPF" value={mentForm.cpf} onChange={(e) => setMentForm((s) => ({ ...s, cpf: e.target.value }))} />
+              <input type="date" placeholder="Data de Nascimento" value={mentForm.dataNascimento} onChange={(e) => setMentForm((s) => ({ ...s, dataNascimento: e.target.value }))} />
+              <input placeholder="LinkedIn (URL)" value={mentForm.linkedin} onChange={(e) => setMentForm((s) => ({ ...s, linkedin: e.target.value }))} />
+              <input placeholder="Rua" value={mentForm.rua} onChange={(e) => setMentForm((s) => ({ ...s, rua: e.target.value }))} />
+              <input placeholder="Número" value={mentForm.numero} onChange={(e) => setMentForm((s) => ({ ...s, numero: e.target.value }))} />
+              <input placeholder="Complemento" value={mentForm.complemento} onChange={(e) => setMentForm((s) => ({ ...s, complemento: e.target.value }))} />
+              <input placeholder="CEP" value={mentForm.cep} onChange={(e) => setMentForm((s) => ({ ...s, cep: e.target.value }))} />
+              <input placeholder="Pretensão CLT" value={mentForm.pretensaoClt} onChange={(e) => setMentForm((s) => ({ ...s, pretensaoClt: e.target.value }))} />
+              <input placeholder="Pretensão PJ" value={mentForm.pretensaoPj} onChange={(e) => setMentForm((s) => ({ ...s, pretensaoPj: e.target.value }))} />
+              <input placeholder="Nome do Pai" value={mentForm.nomePai} onChange={(e) => setMentForm((s) => ({ ...s, nomePai: e.target.value }))} />
+              <input placeholder="Nome da Mãe" value={mentForm.nomeMae} onChange={(e) => setMentForm((s) => ({ ...s, nomeMae: e.target.value }))} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <button className="cv-upload-btn" onClick={salvarMentorado} disabled={!usuario.mentoradoId}>Salvar</button>
             </div>
           </div>
         </div>

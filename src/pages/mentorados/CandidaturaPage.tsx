@@ -1,18 +1,18 @@
 // frontend/src/pages/mentorados/CandidaturaPage.tsx
 import { useEffect, useState } from "react";
 import MentoradoHeader from "../../components/layout/MentoradoHeader";
-import "../../styles/mentorados/candidatura.css"; // Mesmo CSS do perfil
+import "../../styles/mentorados/candidatura.css";
 import { enviarCandidatura } from "../../lib/api";
 import type { CandidaturaPayload } from "../../lib/api";
 
 export default function CandidaturaPage() {
   const [form, setForm] = useState<CandidaturaPayload>({
-    linkedin: "",
     tipoVaga: "",
     empresasBloqueadas: [],
     pretensaoClt: undefined,
     pretensaoPj: undefined,
-  });
+    maxAplicacoes: 6,
+  } as CandidaturaPayload);
 
   const [loading, setLoading] = useState(false);
 
@@ -23,16 +23,17 @@ export default function CandidaturaPage() {
   }, []);
 
   async function handleEnviarCandidatura() {
-    if (!form.linkedin?.trim()) {
-      alert("LinkedIn é obrigatório");
-      return;
+    // Se não informou tipo de vaga, pergunta antes de continuar (busca geral)
+    if (!form.tipoVaga?.trim()) {
+      if (!confirm("Nenhum tipo de vaga informado. Deseja buscar vagas gerais?")) return;
     }
 
     setLoading(true);
     try {
-      // envia sempre ativarIA = true
-      await enviarCandidatura({ ...form, ativarIA: true });
-      alert("Candidatura enviada com sucesso!");
+      // envia sempre ativarIA = true (backend decide o comportamento)
+      const resp = await enviarCandidatura({ ...form, ativarIA: true });
+      // Backend está retornando um objeto com resultado da automação (se implementado)
+      alert(`Solicitação processada. Resultado: ${JSON.stringify(resp?.result ?? resp)}`);
     } catch (err: any) {
       console.error(err);
       alert(err?.response?.data?.message ?? "Falha ao enviar candidatura.");
@@ -43,96 +44,63 @@ export default function CandidaturaPage() {
 
   return (
     <div className="mentorados-home">
-      <div
-        className="mentorados-scroll"
-        style={{
-          height: "100vh",
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
+      <div style={{ maxWidth: 840, margin: "40px auto", padding: 16 }}>
         <MentoradoHeader />
 
-        <div className="mentorados-cards">
-          <div
-            className="mentorados-card grid-span-12"
-            style={{ background: "#fff", color: "#0f172a" }}
-          >
-            <h3 style={{ marginTop: 0 }}>Nova Candidatura</h3>
+        <div className="mentorados-card" style={{ background: "#fff", color: "#0f172a" }}>
+          <h3 style={{ marginTop: 0, textAlign: "center" }}>Nova Candidatura Automática</h3>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
-              }}
-            >
-              <input
-                placeholder="LinkedIn do Mentorado"
-                value={form.linkedin}
-                onChange={(e) => setForm((s) => ({ ...s, linkedin: e.target.value }))}
-              />
-              <input
-                placeholder="Tipo de Vaga"
-                value={form.tipoVaga ?? ""}
-                onChange={(e) => setForm((s) => ({ ...s, tipoVaga: e.target.value }))}
-              />
-              <input
-                placeholder="Empresas Bloqueadas (separadas por vírgula)"
-                value={form.empresasBloqueadas?.join(",") ?? ""}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    empresasBloqueadas: e.target.value
-                      .split(",")
-                      .map((v) => v.trim())
-                      .filter(Boolean),
-                  }))
-                }
-              />
-              <input
-                placeholder="Pretensão CLT"
-                type="number"
-                value={form.pretensaoClt ?? ""}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    pretensaoClt: e.target.value ? Number(e.target.value) : undefined,
-                  }))
-                }
-              />
-              <input
-                placeholder="Pretensão PJ"
-                type="number"
-                value={form.pretensaoPj ?? ""}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    pretensaoPj: e.target.value ? Number(e.target.value) : undefined,
-                  }))
-                }
-              />
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
+            <input
+              placeholder="Tipo de Vaga (ex: Front-end)"
+              value={form.tipoVaga ?? ""}
+              onChange={(e) => setForm((s) => ({ ...s, tipoVaga: e.target.value }))}
+            />
 
-            <div style={{ marginTop: 12 }}>
-              <button
-                className="cv-upload-btn"
-                onClick={handleEnviarCandidatura}
-                disabled={loading}
-              >
-                {loading ? "Enviando..." : "Enviar Candidatura"}
-              </button>
-            </div>
+            <input
+              placeholder="Empresas bloqueadas (vírgula)"
+              value={(form.empresasBloqueadas || []).join(",")}
+              onChange={(e) =>
+                setForm((s) => ({
+                  ...s,
+                  empresasBloqueadas: e.target.value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                }))
+              }
+            />
+
+            <input
+              placeholder="Pretensão CLT (ex: 6000)"
+              type="number"
+              value={form.pretensaoClt ?? ""}
+              onChange={(e) => setForm((s) => ({ ...s, pretensaoClt: e.target.value ? Number(e.target.value) : undefined }))}
+            />
+
+            <input
+              placeholder="Pretensão PJ (ex: 8000)"
+              type="number"
+              value={form.pretensaoPj ?? ""}
+              onChange={(e) => setForm((s) => ({ ...s, pretensaoPj: e.target.value ? Number(e.target.value) : undefined }))}
+            />
+
+            <input
+              placeholder="Máx aplicações (ex: 6)"
+              type="number"
+              value={form.maxAplicacoes ?? 6}
+              onChange={(e) => setForm((s) => ({ ...s, maxAplicacoes: e.target.value ? Number(e.target.value) : undefined }))}
+            />
+
+            <div /> {/* placeholder para manter grid simétrico */}
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <button className="cv-upload-btn" onClick={handleEnviarCandidatura} disabled={loading}>
+              {loading ? "Processando..." : "Iniciar candidaturas"}
+            </button>
           </div>
         </div>
-
-        <img
-          src="/images/dashboard.png"
-          alt="Imagem ilustrativa"
-          className="mentorados-center-image"
-          draggable={false}
-        />
       </div>
     </div>
   );

@@ -1,139 +1,197 @@
-/* ======= styles/mentorados/candidatura.css ======= */
-@import url('[https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap)');
+/* ======= styles/mentorados/candidatura.css (substituir todo o conteúdo) ======= */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
 
-:root {
---azul: #0d6efd;
---text: #0f172a;
---radius: 12px;
+:root{
+  --azul: #0d6efd;
+  --text: #0f172a;
+  --text-dim: #334155;
+  --radius: 12px;
+  --sidebar-w: 260px;    /* mantido para alinhar com dashboard */
+  --header-h: 72px;      /* altura reservada para header (ajuste se necessário) */
+  --page-max: 840px;     /* largura máxima do layout central */
 }
 
+/* Reset / base */
+* { box-sizing: border-box; }
 body, .mentorados-home {
-font-family: 'Open Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans';
-margin: 0;
-padding: 0;
-background: #f5f7fa;
+  margin: 0;
+  padding: 0;
+  font-family: 'Open Sans', system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans";
+  background: #f5f7fa;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ==================== Home ==================== */
+/* Previne scroll horizontal global */
+html, body { overflow-x: hidden !important; }
+
+/* ==================== Layout principal ==================== */
+/* A página reserva a área do header (não permitir sobreposição) */
 .mentorados-home {
-min-height: 100vh;
-display: flex;
-justify-content: center; /* centraliza horizontal */
-padding: 40px 16px;
-position: relative;
-overflow-x: hidden; /* previne corte horizontal */
-overflow-y: auto;
+  min-height: 100vh;
+  padding-left: var(--sidebar-w);            /* caso haja sidebar */
+  padding-top: calc(var(--header-h) + 24px); /* reserva do header + espaçamento */
+  padding-bottom: 40px;
+  display: flex;
+  justify-content: center; /* centraliza horizontalmente o conteúdo principal */
+  align-items: flex-start;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* ==================== Imagem de fundo decorativa ==================== */
+/* Conteúdo central (constrói um container parecido com dashboard) */
+.mentorados-container {
+  width: 100%;
+  max-width: var(--page-max);
+  padding: 0 16px;
+  z-index: 2; /* acima da imagem decorativa */
+}
+
+/* ==================== Imagem decorativa de fundo ==================== */
 .mentorados-center-image {
-position: fixed;
-z-index: 1;
-top: 55%;
-left: calc(50% + 130px); /* ajusta de acordo com sidebar */
-transform: translate(-50%, -50%);
-width: clamp(480px, 40vw, 1200px);
-opacity: .16;
-pointer-events: none;
-user-select: none;
+  position: fixed;
+  z-index: 1;
+  top: 50%;
+  left: calc(50% + (var(--sidebar-w) / 2));
+  transform: translate(-50%, -50%);
+  width: clamp(480px, 40vw, 1200px);
+  max-height: 86vh;
+  object-fit: contain;
+  opacity: 0.16;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ==================== Card do Formulário ==================== */
 .mentorados-card {
-position: relative;
-z-index: 2;
-background: #fff;
-color: var(--text);
-border-radius: var(--radius);
-box-shadow: 0 12px 32px rgba(0,0,0,.15);
-padding: 36px 40px;
-width: 100%;
-max-width: 700px; /* card maior mas não corta */
-display: flex;
-flex-direction: column;
-gap: 24px;
-box-sizing: border-box;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  padding: 36px 40px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+  position: relative;
 }
 
+/* Título */
 .mentorados-card h3 {
-margin-top: 0;
-font-weight: 800;
-font-size: 24px;
-text-align: center;
-color: var(--azul);
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--azul);
+  text-align: center;
 }
 
-/* ==================== Formulário ==================== */
+/* Form grid (dois campos por linha, ampliável) */
 .mentorados-card .form-grid {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 20px;
-width: 100%;
-box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
 }
 
-.mentorados-card input {
-padding: 14px 18px;
-font-size: 16px;
-border-radius: var(--radius);
-border: 1px solid #ccc;
-outline: none;
-transition: border-color 0.2s ease, box-shadow 0.2s ease;
-width: 100%;
-box-sizing: border-box;
+/* Inputs & selects */
+.mentorados-card input,
+.mentorados-card select,
+.mentorados-card textarea {
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--text);
 }
 
-.mentorados-card input:focus {
-border-color: var(--azul);
-box-shadow: 0 0 8px rgba(13, 110, 253, 0.35);
+.mentorados-card textarea { min-height: 120px; resize: vertical; }
+
+.mentorados-card input:focus,
+.mentorados-card select:focus,
+.mentorados-card textarea:focus {
+  border-color: var(--azul);
+  box-shadow: 0 0 8px rgba(13,110,253,0.14);
 }
 
-.mentorados-card input[type="number"] {
--moz-appearance: textfield;
+/* tipo number - remove spin on modern browsers */
+.mentorados-card input[type="number"] { -moz-appearance: textfield; }
+.mentorados-card input::-webkit-inner-spin-button,
+.mentorados-card input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* campos que devem ocupar as duas colunas */
+.full-span { grid-column: span 2; }
+
+/* Ajuste visual para placeholder menor */
+.mentorados-card input::placeholder, .mentorados-card textarea::placeholder {
+  color: #9ca3af;
 }
 
-.mentorados-card input::-webkit-outer-spin-button,
-.mentorados-card input::-webkit-inner-spin-button {
--webkit-appearance: none;
-margin: 0;
+/* ==================== Ações / botão ==================== */
+.mentorados-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
-.full-span {
-grid-column: span 2;
-}
-
-/* ==================== Botão de Enviar ==================== */
+.cv-upload-btn,
 .mentorados-card button {
-background: var(--azul);
-border: none;
-color: #fff;
-font-weight: 700;
-border-radius: var(--radius);
-padding: 14px 24px;
-font-size: 16px;
-cursor: pointer;
-transition: 0.2s all ease;
-width: 100%;
-box-sizing: border-box;
+  background: var(--azul);
+  color: #fff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 15px;
+  transition: transform .06s ease, box-shadow .12s ease, filter .12s ease;
 }
 
-.mentorados-card button:hover {
-filter: brightness(0.95);
-}
-
+.cv-upload-btn:disabled,
 .mentorados-card button:disabled {
-opacity: 0.6;
-cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-/* ==================== Mobile ==================== */
+.cv-upload-btn:hover,
+.mentorados-card button:hover { filter: brightness(.95); box-shadow: 0 8px 24px rgba(13,110,253,0.08); }
+
+/* ==================== Responsividade ==================== */
+/* Evita que qualquer componente fique por baixo do header em telas menores */
+@media (max-width: 1200px) {
+  .mentorados-home { padding-left: 16px; } /* sidebar pode recolher */
+  .mentorados-center-image { left: 70%; }  /* ajusta imagem para caber */
+}
+
+/* mobile: 1 coluna */
 @media (max-width: 520px) {
-.mentorados-card .form-grid {
-grid-template-columns: 1fr;
-gap: 16px;
+  .mentorados-home { padding-top: calc(var(--header-h) + 16px); padding-left: 12px; padding-right: 12px; }
+  .mentorados-card { padding: 20px; }
+  .mentorados-card .form-grid { grid-template-columns: 1fr; gap: 12px; }
+  .full-span { grid-column: span 1; }
+  .mentorados-center-image { display: none; } /* esconde imagem no mobile para evitar sobreposição */
 }
 
-.full-span {
-grid-column: span 1;
+/* tabela de segurança: impede overflow horizontal do card */
+.mentorados-card { overflow: visible; }
+
+/* ==================== Acessibilidade / temas ==================== */
+body.dark-mode .mentorados-card { background: #0b1220; color: #e6eef8; }
+body.dark-mode .mentorados-card input,
+body.dark-mode .mentorados-card select,
+body.dark-mode .mentorados-card textarea {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #e6eef8;
 }
-}
+
+/* ==================== Utilitários (não tocar) ==================== */
+.hidden { display: none !important; }
+.center { display: flex; align-items: center; justify-content: center; }

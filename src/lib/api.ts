@@ -771,26 +771,25 @@ export async function updateMentorado(id: string, dto: PutMentoradoDto) {
 
 /* ============================ Candidaturas ============================ */
 export type CandidaturaPayload = {
-  linkedin: string;
-  tipoVaga?: string;           // novo campo para o tipo de vaga
+  mentoradoId?: string | number;
+  tipoVaga?: string;
   empresasBloqueadas?: string[];
   pretensaoClt?: number;
   pretensaoPj?: number;
+  maxAplicacoes?: number;
   ativarIA?: boolean;
 };
 
 /**
- * POST /candidaturas
- * Envia os dados da candidatura do mentorado.
+ * POST /mentorados-candidatura
  */
 export async function enviarCandidatura(payload: CandidaturaPayload) {
-  const { data } = await api.post<{ sucesso: boolean; id?: string }>(
-    `/candidaturas`,
+  const { data } = await api.post<{ sucesso: boolean; result?: any }>(
+    `/mentorados-candidatura`,
     payload
   );
   return data;
 }
-
 
 /* ============================ Helpers JWT (já usados nas páginas) ============================ */
 export function pickUserIdFromJwt(jwt?: string | null): string | null {

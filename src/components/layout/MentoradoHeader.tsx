@@ -45,12 +45,12 @@ export default function MentoradoHeader() {
         </NavLink>
 
         {/* NOVO: Candidatura */}
-        <NavLink
+        {/* <NavLink
           to="/dashboard/mentorado/candidatura"
           className={({ isActive }) => (isActive ? "active" : "")}
         >
           Candidatura
-        </NavLink>
+        </NavLink> */}
       </nav>
 
       <div className="app-sidebar-footer">

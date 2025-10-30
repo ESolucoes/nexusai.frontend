@@ -1,66 +1,55 @@
-/* ======= styles/mentorados/candidatura.css (substituir todo o conteúdo) ======= */
+/* frontend/src/styles/mentorados/candidatura.css */
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
 
-:root{
+:root {
   --azul: #0d6efd;
+  --verde: #28a745;
+  --azul-claro: #17a2b8;
+  --cinza: #6c757d;
   --text: #0f172a;
   --text-dim: #334155;
   --radius: 12px;
-  --sidebar-w: 260px;    /* mantido para alinhar com dashboard */
-  --header-h: 72px;      /* altura reservada para header (ajuste se necessário) */
-  --page-max: 840px;     /* largura máxima do layout central */
+  --sidebar-w: 260px;
+  --header-h: 72px;
+  --page-max: 840px;
 }
 
 /* Reset / base */
-* { box-sizing: border-box; }
-body, .mentorados-home {
+* { 
+  box-sizing: border-box; 
   margin: 0;
   padding: 0;
+}
+
+body, .mentorados-home {
   font-family: 'Open Sans', system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans";
-  background: #f5f7fa;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-/* Previne scroll horizontal global */
-html, body { overflow-x: hidden !important; }
+/* Previne scroll horizontal */
+html, body { 
+  overflow-x: hidden !important; 
+}
 
 /* ==================== Layout principal ==================== */
-/* A página reserva a área do header (não permitir sobreposição) */
 .mentorados-home {
   min-height: 100vh;
-  padding-left: var(--sidebar-w);            /* caso haja sidebar */
-  padding-top: calc(var(--header-h) + 24px); /* reserva do header + espaçamento */
-  padding-bottom: 40px;
+  padding: 20px 16px;
   display: flex;
-  justify-content: center; /* centraliza horizontalmente o conteúdo principal */
+  justify-content: center;
   align-items: flex-start;
   position: relative;
   overflow-x: hidden;
 }
 
-/* Conteúdo central (constrói um container parecido com dashboard) */
 .mentorados-container {
   width: 100%;
   max-width: var(--page-max);
-  padding: 0 16px;
-  z-index: 2; /* acima da imagem decorativa */
-}
-
-/* ==================== Imagem decorativa de fundo ==================== */
-.mentorados-center-image {
-  position: fixed;
-  z-index: 1;
-  top: 50%;
-  left: calc(50% + (var(--sidebar-w) / 2));
-  transform: translate(-50%, -50%);
-  width: clamp(480px, 40vw, 1200px);
-  max-height: 86vh;
-  object-fit: contain;
-  opacity: 0.16;
-  pointer-events: none;
-  user-select: none;
+  z-index: 2;
 }
 
 /* ==================== Card do Formulário ==================== */
@@ -68,130 +57,331 @@ html, body { overflow-x: hidden !important; }
   background: #fff;
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgba(0,0,0,0.12);
-  padding: 36px 40px;
+  padding: 30px;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  box-sizing: border-box;
-  position: relative;
+  margin-top: 20px;
 }
 
-/* Título */
 .mentorados-card h3 {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--azul);
   text-align: center;
 }
 
-/* Form grid (dois campos por linha, ampliável) */
-.mentorados-card .form-grid {
+/* ==================== Status da Sessão ==================== */
+.status-sessao {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid;
+}
+
+.status-sessao.logged-in {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.status-sessao.not-logged {
+  background-color: #fff3cd;
+  color: #856404;
+  border-color: #ffeaa7;
+}
+
+/* ==================== Debug Info ==================== */
+.debug-info {
+  margin-bottom: 15px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  border: 1px solid #dee2e6;
+}
+
+/* ==================== Botões de Sessão ==================== */
+.sessao-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-configurar, .btn-verificar {
+  padding: 14px;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-height: 50px;
+}
+
+.btn-configurar {
+  background-color: var(--verde);
+}
+
+.btn-verificar {
+  background-color: var(--azul-claro);
+}
+
+.btn-configurar:hover:not(:disabled), 
+.btn-verificar:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-configurar:disabled, 
+.btn-verificar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ==================== Instruções ==================== */
+.instrucoes {
+  padding: 20px;
+  background-color: #e7f3ff;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  border: 1px solid #b3d9ff;
+}
+
+.instrucoes ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.instrucoes li {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.dica {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* ==================== Formulário ==================== */
+.form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   width: 100%;
 }
 
-/* Inputs & selects */
-.mentorados-card input,
-.mentorados-card select,
-.mentorados-card textarea {
-  padding: 12px 14px;
+.form-grid input {
+  padding: 14px;
   font-size: 15px;
   border-radius: 10px;
   border: 1px solid #d1d5db;
   outline: none;
-  transition: border-color .18s ease, box-shadow .18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   width: 100%;
-  box-sizing: border-box;
   background: #fff;
   color: var(--text);
 }
 
-.mentorados-card textarea { min-height: 120px; resize: vertical; }
-
-.mentorados-card input:focus,
-.mentorados-card select:focus,
-.mentorados-card textarea:focus {
+.form-grid input:focus {
   border-color: var(--azul);
   box-shadow: 0 0 8px rgba(13,110,253,0.14);
 }
 
-/* tipo number - remove spin on modern browsers */
-.mentorados-card input[type="number"] { -moz-appearance: textfield; }
-.mentorados-card input::-webkit-inner-spin-button,
-.mentorados-card input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-
-/* campos que devem ocupar as duas colunas */
-.full-span { grid-column: span 2; }
-
-/* Ajuste visual para placeholder menor */
-.mentorados-card input::placeholder, .mentorados-card textarea::placeholder {
-  color: #9ca3af;
+/* Remove spin buttons from number inputs */
+.form-grid input[type="number"] {
+  -moz-appearance: textfield;
+  -webkit-appearance: textfield;
+  appearance: textfield;
 }
 
-/* ==================== Ações / botão ==================== */
-.mentorados-actions {
-  margin-top: 6px;
+.form-grid input::-webkit-inner-spin-button,
+.form-grid input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Mentorado Status */
+.mentorado-status {
   display: flex;
-  gap: 12px;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  padding: 14px;
+  border-radius: 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
 }
 
-.cv-upload-btn,
-.mentorados-card button {
-  background: var(--azul);
-  color: #fff;
+.status-ok {
+  color: var(--verde);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-error {
+  color: #dc3545;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ==================== Botão de Candidatura ==================== */
+.actions-container {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.btn-candidatura {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--azul);
+  color: white;
   border: none;
-  padding: 12px 18px;
   border-radius: 10px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  font-size: 15px;
-  transition: transform .06s ease, box-shadow .12s ease, filter .12s ease;
+  transition: all 0.2s ease;
+  min-height: 55px;
 }
 
-.cv-upload-btn:disabled,
-.mentorados-card button:disabled {
+.btn-candidatura:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(13,110,253,0.12);
+}
+
+.btn-candidatura:disabled {
+  background-color: var(--cinza);
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
-
-.cv-upload-btn:hover,
-.mentorados-card button:hover { filter: brightness(.95); box-shadow: 0 8px 24px rgba(13,110,253,0.08); }
 
 /* ==================== Responsividade ==================== */
-/* Evita que qualquer componente fique por baixo do header em telas menores */
-@media (max-width: 1200px) {
-  .mentorados-home { padding-left: 16px; } /* sidebar pode recolher */
-  .mentorados-center-image { left: 70%; }  /* ajusta imagem para caber */
+
+/* Tablets */
+@media (max-width: 768px) {
+  .mentorados-home {
+    padding: 16px 12px;
+  }
+  
+  .mentorados-card {
+    padding: 24px;
+    margin-top: 16px;
+  }
+  
+  .mentorados-card h3 {
+    font-size: 22px;
+  }
+  
+  .sessao-buttons {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .btn-configurar, .btn-verificar {
+    min-height: 48px;
+    font-size: 15px;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .instrucoes {
+    padding: 16px;
+    font-size: 13px;
+  }
 }
 
-/* mobile: 1 coluna */
-@media (max-width: 520px) {
-  .mentorados-home { padding-top: calc(var(--header-h) + 16px); padding-left: 12px; padding-right: 12px; }
-  .mentorados-card { padding: 20px; }
-  .mentorados-card .form-grid { grid-template-columns: 1fr; gap: 12px; }
-  .full-span { grid-column: span 1; }
-  .mentorados-center-image { display: none; } /* esconde imagem no mobile para evitar sobreposição */
+/* Mobile */
+@media (max-width: 480px) {
+  .mentorados-home {
+    padding: 12px 8px;
+  }
+  
+  .mentorados-card {
+    padding: 20px 16px;
+    margin-top: 12px;
+    gap: 16px;
+  }
+  
+  .mentorados-card h3 {
+    font-size: 20px;
+  }
+  
+  .btn-configurar, .btn-verificar {
+    padding: 12px;
+    min-height: 46px;
+    font-size: 14px;
+  }
+  
+  .form-grid input {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  .btn-candidatura {
+    padding: 14px;
+    min-height: 50px;
+    font-size: 15px;
+  }
+  
+  .instrucoes {
+    padding: 14px;
+    font-size: 12px;
+  }
+  
+  .instrucoes ol {
+    padding-left: 20px;
+  }
+  
+  .status-sessao, .debug-info {
+    font-size: 11px;
+    padding: 10px;
+  }
 }
 
-/* tabela de segurança: impede overflow horizontal do card */
-.mentorados-card { overflow: visible; }
-
-/* ==================== Acessibilidade / temas ==================== */
-body.dark-mode .mentorados-card { background: #0b1220; color: #e6eef8; }
-body.dark-mode .mentorados-card input,
-body.dark-mode .mentorados-card select,
-body.dark-mode .mentorados-card textarea {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  color: #e6eef8;
+/* Telas muito pequenas */
+@media (max-width: 360px) {
+  .mentorados-card {
+    padding: 16px 12px;
+  }
+  
+  .mentorados-card h3 {
+    font-size: 18px;
+  }
+  
+  .btn-configurar, .btn-verificar, .btn-candidatura {
+    font-size: 13px;
+  }
 }
 
-/* ==================== Utilitários (não tocar) ==================== */
-.hidden { display: none !important; }
-.center { display: flex; align-items: center; justify-content: center; }
+/* Garante que o conteúdo nunca fique cortado */
+.mentorados-container {
+  overflow: visible;
+}
+
+.mentorados-card {
+  overflow: visible;
+}
+
+/* Acessibilidade - foco visível */
+button:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 2px;
+}
+
+input:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 1px;
+}

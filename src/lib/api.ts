@@ -770,8 +770,9 @@ export async function updateMentorado(id: string, dto: PutMentoradoDto) {
 }
 
 /* ============================ Candidaturas ============================ */
+
 export type CandidaturaPayload = {
-  mentoradoId?: string | number;
+  mentoradoId: string;
   tipoVaga?: string;
   empresasBloqueadas?: string[];
   pretensaoClt?: number;
@@ -780,17 +781,28 @@ export type CandidaturaPayload = {
   ativarIA?: boolean;
 };
 
+export type CandidaturaResponse = {
+  sucesso: boolean;
+  result?: {
+    message: string;
+    detalhes: any[];
+    totalAplicacoes: number;
+    totalVagas: number;
+  };
+  error?: string;
+  detalhes?: string;
+};
+
 /**
  * POST /mentorados-candidatura
  */
-export async function enviarCandidatura(payload: CandidaturaPayload) {
-  const { data } = await api.post<{ sucesso: boolean; result?: any }>(
+export async function enviarCandidatura(payload: CandidaturaPayload): Promise<CandidaturaResponse> {
+  const { data } = await api.post<CandidaturaResponse>(
     `/mentorados-candidatura`,
     payload
   );
   return data;
 }
-
 /* ============================ Helpers JWT (já usados nas páginas) ============================ */
 export function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt);

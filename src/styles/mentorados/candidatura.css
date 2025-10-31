@@ -23,7 +23,7 @@
 
 body, .mentorados-home {
   font-family: 'Open Sans', system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans";
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #fff;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -38,231 +38,378 @@ html, body {
 /* ==================== Layout principal ==================== */
 .mentorados-home {
   min-height: 100vh;
-  padding: 20px 16px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  width: 100vw;
+  padding-left: var(--sidebar-w);
+  background: #fff;
   position: relative;
   overflow-x: hidden;
 }
 
 .mentorados-container {
-  width: 100%;
-  max-width: var(--page-max);
-  z-index: 2;
-}
-
-/* ==================== Card do Formulário ==================== */
-.mentorados-card {
-  background: #fff;
-  border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
-  padding: 30px;
-  width: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 20px;
 }
 
-.mentorados-card h3 {
+/* Container centralizado */
+.page-content-centered {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ==================== Cards ==================== */
+.info-card,
+.warning-card,
+.main-card,
+.loading-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  width: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.info-card:hover,
+.warning-card:hover,
+.main-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+}
+
+/* Cabeçalho dos cards */
+.card-header {
+  padding: 24px 24px 16px 24px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.card-header h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
-  color: var(--azul);
+  color: var(--text);
   text-align: center;
 }
 
-/* ==================== Status da Sessão ==================== */
-.status-sessao {
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  border: 1px solid;
+.card-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.status-sessao.logged-in {
-  background-color: #d4edda;
-  color: #155724;
-  border-color: #c3e6cb;
-}
-
-.status-sessao.not-logged {
-  background-color: #fff3cd;
-  color: #856404;
-  border-color: #ffeaa7;
-}
-
-/* ==================== Debug Info ==================== */
-.debug-info {
-  margin-bottom: 15px;
-  padding: 8px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #666;
-  border: 1px solid #dee2e6;
-}
-
-/* ==================== Botões de Sessão ==================== */
-.sessao-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.btn-configurar, .btn-verificar {
-  padding: 14px;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+.card-subtitle {
+  margin: 8px 0 0 0;
+  text-align: center;
+  color: var(--text-dim);
   font-size: 16px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  min-height: 50px;
+  font-weight: 400;
 }
 
-.btn-configurar {
-  background-color: var(--verde);
+/* Conteúdo dos cards */
+.card-content {
+  padding: 24px;
 }
 
-.btn-verificar {
-  background-color: var(--azul-claro);
+/* Card de informações */
+.info-card {
+  border-left: 4px solid var(--azul);
 }
 
-.btn-configurar:hover:not(:disabled), 
-.btn-verificar:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-configurar:disabled, 
-.btn-verificar:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* ==================== Instruções ==================== */
-.instrucoes {
-  padding: 20px;
-  background-color: #e7f3ff;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  border: 1px solid #b3d9ff;
-}
-
-.instrucoes ol {
-  margin: 12px 0;
-  padding-left: 24px;
-}
-
-.instrucoes li {
-  margin-bottom: 6px;
-  line-height: 1.4;
-}
-
-.dica {
-  margin-top: 12px;
-  font-size: 12px;
-  color: #666;
-}
-
-/* ==================== Formulário ==================== */
-.form-grid {
+.info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.info-value {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.info-value.code {
+  font-family: 'Monaco', 'Consolas', monospace;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Card de aviso */
+.warning-card {
+  border-left: 4px solid #ffc107;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+}
+
+.warning-card .card-header {
+  border-bottom-color: #ffeaa7;
+}
+
+.warning-card .card-content p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Card principal */
+.main-card {
+  border-left: 4px solid var(--verde);
+}
+
+/* Destaque de funcionalidade */
+.feature-highlight {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: #fff3cd;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border: 1px solid #ffeaa7;
+  font-size: 14px;
+}
+
+.feature-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.feature-text {
+  flex: 1;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ==================== Formulário ==================== */
+.form-section {
   width: 100%;
 }
 
-.form-grid input {
-  padding: 14px;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.form-input {
+  padding: 14px 16px;
   font-size: 15px;
   border-radius: 10px;
   border: 1px solid #d1d5db;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-  width: 100%;
-  background: #fff;
+  transition: all 0.3s ease;
+  background: white;
   color: var(--text);
+  width: 100%;
 }
 
-.form-grid input:focus {
+.form-input:focus {
   border-color: var(--azul);
   box-shadow: 0 0 8px rgba(13,110,253,0.14);
 }
 
+.form-input::placeholder {
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+.form-hint {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 /* Remove spin buttons from number inputs */
-.form-grid input[type="number"] {
+.form-input[type="number"] {
   -moz-appearance: textfield;
   -webkit-appearance: textfield;
   appearance: textfield;
 }
 
-.form-grid input::-webkit-inner-spin-button,
-.form-grid input::-webkit-outer-spin-button {
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* Mentorado Status */
-.mentorado-status {
+/* ==================== Botões e Ações ==================== */
+.actions-section {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  border-radius: 10px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.status-ok {
-  color: var(--verde);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.status-error {
-  color: #dc3545;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* ==================== Botão de Candidatura ==================== */
-.actions-container {
-  margin-top: 20px;
+.automation-button {
   width: 100%;
-}
-
-.btn-candidatura {
-  width: 100%;
-  padding: 16px;
-  background-color: var(--azul);
+  padding: 18px 24px;
+  background: var(--azul);
   color: white;
   border: none;
   border-radius: 10px;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 55px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 60px;
 }
 
-.btn-candidatura:hover:not(:disabled) {
+.automation-button:hover:not(:disabled) {
   opacity: 0.9;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(13,110,253,0.12);
 }
 
-.btn-candidatura:disabled {
-  background-color: var(--cinza);
-  opacity: 0.6;
+.automation-button:disabled {
+  background: var(--cinza);
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* Aviso da automação */
+.automation-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  font-size: 14px;
+}
+
+.warning-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.warning-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ==================== Resumo da Configuração ==================== */
+.config-summary {
+  padding: 20px;
+  background: #e8f5e8;
+  border-radius: 8px;
+  border: 1px solid #c3e6cb;
+  margin-top: 24px;
+}
+
+.config-summary h4 {
+  margin: 0 0 16px 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.summary-value {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* ==================== Loading States ==================== */
+.loading-card {
+  text-align: center;
+  padding: 40px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--azul);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+.button-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-card h3 {
+  margin: 0 0 8px 0;
+  color: var(--text);
+}
+
+.loading-card p {
+  margin: 0;
+  color: var(--text-dim);
 }
 
 /* ==================== Responsividade ==================== */
@@ -270,109 +417,101 @@ html, body {
 /* Tablets */
 @media (max-width: 768px) {
   .mentorados-home {
-    padding: 16px 12px;
+    padding-left: 0;
   }
   
-  .mentorados-card {
-    padding: 24px;
-    margin-top: 16px;
+  .page-content-centered {
+    padding: 24px 16px;
+    gap: 20px;
   }
-  
-  .mentorados-card h3 {
-    font-size: 22px;
+
+  .card-header {
+    padding: 20px 20px 16px 20px;
   }
-  
-  .sessao-buttons {
-    grid-template-columns: 1fr;
-    gap: 10px;
+
+  .card-header h2 {
+    font-size: 24px;
   }
-  
-  .btn-configurar, .btn-verificar {
-    min-height: 48px;
-    font-size: 15px;
+
+  .card-content {
+    padding: 20px;
   }
-  
+
   .form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .info-grid,
+  .summary-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
-  .instrucoes {
-    padding: 16px;
-    font-size: 13px;
+
+  .feature-highlight {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .automation-button {
+    padding: 16px 20px;
+    min-height: 56px;
+    font-size: 15px;
   }
 }
 
 /* Mobile */
 @media (max-width: 480px) {
-  .mentorados-home {
-    padding: 12px 8px;
-  }
-  
-  .mentorados-card {
-    padding: 20px 16px;
-    margin-top: 12px;
+  .page-content-centered {
+    padding: 20px 12px;
     gap: 16px;
   }
-  
-  .mentorados-card h3 {
-    font-size: 20px;
+
+  .card-header {
+    padding: 16px 16px 12px 16px;
   }
-  
-  .btn-configurar, .btn-verificar {
-    padding: 12px;
-    min-height: 46px;
+
+  .card-header h2 {
+    font-size: 22px;
+  }
+
+  .card-header h3 {
+    font-size: 18px;
+  }
+
+  .card-content {
+    padding: 16px;
+  }
+
+  .form-input {
+    padding: 12px 14px;
     font-size: 14px;
   }
-  
-  .form-grid input {
-    padding: 12px;
+
+  .automation-button {
+    padding: 14px 16px;
+    min-height: 52px;
     font-size: 14px;
   }
-  
-  .btn-candidatura {
-    padding: 14px;
-    min-height: 50px;
-    font-size: 15px;
-  }
-  
-  .instrucoes {
-    padding: 14px;
-    font-size: 12px;
-  }
-  
-  .instrucoes ol {
-    padding-left: 20px;
-  }
-  
-  .status-sessao, .debug-info {
-    font-size: 11px;
-    padding: 10px;
+
+  .config-summary {
+    padding: 16px;
   }
 }
 
 /* Telas muito pequenas */
 @media (max-width: 360px) {
-  .mentorados-card {
-    padding: 16px 12px;
+  .page-content-centered {
+    padding: 16px 8px;
   }
-  
-  .mentorados-card h3 {
-    font-size: 18px;
+
+  .card-header h2 {
+    font-size: 20px;
   }
-  
-  .btn-configurar, .btn-verificar, .btn-candidatura {
+
+  .automation-button {
     font-size: 13px;
   }
-}
-
-/* Garante que o conteúdo nunca fique cortado */
-.mentorados-container {
-  overflow: visible;
-}
-
-.mentorados-card {
-  overflow: visible;
 }
 
 /* Acessibilidade - foco visível */
@@ -384,4 +523,9 @@ button:focus-visible {
 input:focus-visible {
   outline: 2px solid var(--azul);
   outline-offset: 1px;
+}
+
+/* Dark mode */
+body.dark-mode .mentorados-home { 
+  background: #121212; 
 }

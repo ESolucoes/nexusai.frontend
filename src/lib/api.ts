@@ -769,40 +769,70 @@ export async function updateMentorado(id: string, dto: PutMentoradoDto) {
   return data;
 }
 
-/* ============================ Candidaturas ============================ */
+/* ============================ Candidaturas Automatizadas ============================ */
 
-export type CandidaturaPayload = {
-  mentoradoId: string;
-  tipoVaga?: string;
-  empresasBloqueadas?: string[];
-  pretensaoClt?: number;
-  pretensaoPj?: number;
-  maxAplicacoes?: number;
-  ativarIA?: boolean;
+export type RespostasChatConfig = {
+  disponibilidade?: string;
+  avisoPrevio?: string;
+  interesse?: string;
+  pretensaoSalarial?: string;
+  pretensaoPj?: string;
+  localizacao?: string;
+  experiencia?: string;
+  outrasPerguntas?: string;
+  respostaPadrao?: string;
 };
 
-export type CandidaturaResponse = {
-  sucesso: boolean;
-  result?: {
-    message: string;
-    detalhes: any[];
-    totalAplicacoes: number;
-    totalVagas: number;
-  };
-  error?: string;
-  detalhes?: string;
+export type IniciarAutomacaoPayload = {
+  email: string;
+  password: string;
+  tipoVaga: string;
+  empresasBloqueadas?: string[];
+  maxAplicacoes?: number;
+  mentoradoId?: string;
+  respostasChat?: RespostasChatConfig;
+};
+
+export type AutomacaoResponse = {
+  success: boolean;
+  results: Array<{
+    success: boolean;
+    jobTitle?: string;
+    company?: string;
+    applied: boolean;
+    error?: string;
+    timestamp: string;
+    chatResponses?: string[];
+  }>;
+  message: string;
 };
 
 /**
- * POST /mentorados-candidatura
+ * GET /mentorados-candidatura/meu-mentorado - Obter mentorado do usuário logado
  */
-export async function enviarCandidatura(payload: CandidaturaPayload): Promise<CandidaturaResponse> {
-  const { data } = await api.post<CandidaturaResponse>(
-    `/mentorados-candidatura`,
-    payload
+export async function getMeuMentorado() {
+  const { data } = await api.get<{
+    id: string;
+    cargoObjetivo: string;
+    pretensaoClt: number;
+    pretensaoPj: number;
+    linkedin: string;
+  }>('/mentorados-candidatura/meu-mentorado');
+  return data;
+}
+
+/**
+ * POST /mentorados-candidatura/iniciar-automacao
+ */
+export async function iniciarAutomacaoLinkedIn(payload: IniciarAutomacaoPayload): Promise<AutomacaoResponse> {
+  const { data } = await api.post<AutomacaoResponse>(
+    '/mentorados-candidatura/iniciar-automacao',
+    payload,
+    { timeout: 300000 } // 5 minutos específico para automação
   );
   return data;
 }
+
 /* ============================ Helpers JWT (já usados nas páginas) ============================ */
 export function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt);

@@ -110,8 +110,8 @@ export default function NovoMentorModal({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={() => !m_loading && onClose()}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-card">
         <div className="modal-header">
           <h3>Registrar Mentor</h3>
           <button className="modal-close" onClick={() => !m_loading && onClose()}>×</button>

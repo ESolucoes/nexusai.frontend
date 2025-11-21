@@ -13,8 +13,8 @@ import {
   downloadMentoradoAudio,
   fetchAudioBlob,
   downloadCurriculo,
-  downloadCurriculoByName, // 🎯 NOVO: Importar a função de download por nome
-  listMentoradoCurriculos, // 🎯 NOVO: Importar a função de listar
+  downloadCurriculoByName,
+  listMentoradoCurriculos,
   type MentoradoAudio,
   getLatestCurriculoInfo,
   type MentoradoCurriculo,
@@ -238,7 +238,7 @@ function AudioRecorderModal(props: {
     >
       <div
         style={{
-          width: 560,
+          width: "min(560px, 95vw)",
           background: "#fff",
           borderRadius: 12,
           padding: 18,
@@ -283,7 +283,7 @@ function AudioRecorderModal(props: {
           </select>
         </div>
 
-        <div style={{ display: "flex", gap: 10, margin: "14px 0" }}>
+        <div style={{ display: "flex", gap: 10, margin: "14px 0", flexWrap: "wrap" }}>
           {!recording && (
             <button onClick={start} className="cv-upload-btn">
               Iniciar Gravação
@@ -325,6 +325,183 @@ function AudioRecorderModal(props: {
   );
 }
 
+/* ============================ COMPONENTE VAGAS INTEGRADO ============================ */
+function VagasSection({ pageSize = 10 }: { pageSize?: number }) {
+  const [loading, setLoading] = useState(true);
+  const [itens, setItens] = useState<any[]>([]);
+  const [pagina, setPagina] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const quantidade = pageSize;
+
+  async function load() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const { listMyVagaLinks } = await import("../../lib/api");
+      const res = await listMyVagaLinks(pagina, quantidade);
+      setItens(res.itens);
+      setTotal(res.total);
+    } catch (error: any) {
+      setErr("Falha ao carregar vagas");
+      console.error("Erro ao carregar vagas:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, [pagina, quantidade]);
+
+  const totalPaginas = Math.max(1, Math.ceil(total / quantidade));
+
+  function normalizeUrl(raw: string) {
+    const s = (raw || "").trim();
+    if (!s) return "";
+    if (!/^https?:\/\//i.test(s)) return `https://${s}`;
+    return s;
+  }
+
+  async function handleSave() {
+    const normalized = normalizeUrl(url);
+    if (!normalized || !/[.]/.test(normalized)) {
+      setErr("Informe um link válido.");
+      return;
+    }
+    
+    setSaving(true);
+    setErr(null);
+    try {
+      const { createMyVagaLink } = await import("../../lib/api");
+      await createMyVagaLink({ url: normalized });
+      setUrl("");
+      
+      if (pagina === 1) {
+        await load();
+      } else {
+        setPagina(1);
+      }
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || "Falha ao salvar o link.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove(id: string) {
+    if (!confirm("Tem certeza que deseja remover esta vaga?")) {
+      return;
+    }
+
+    setRemoving(id);
+    setErr(null);
+    
+    try {
+      const { removeMyVagaLink } = await import("../../lib/api");
+      await removeMyVagaLink(id);
+      await load();
+    } catch (error: any) {
+      setErr(error?.response?.data?.message || "Falha ao remover a vaga");
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  return (
+    <div className="vagas-card-integrated">
+      <div className="vagas-card__header">
+        <h3 style={{ margin: 0 }}>Links de Vagas</h3>
+        <div className="vagas-card__pager">
+          <span style={{ fontSize: 14, color: "#666" }}>
+            Total: {total} {total === 1 ? 'item' : 'itens'}
+          </span>
+          <button
+            disabled={pagina <= 1}
+            onClick={() => setPagina(p => Math.max(1, p - 1))}
+          >
+            {"<"}
+          </button>
+          <span style={{ fontSize: 14, color: "#666", minWidth: "60px", textAlign: "center" }}>
+            {pagina} / {totalPaginas}
+          </span>
+          <button
+            disabled={pagina >= totalPaginas}
+            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+          >
+            {">"}
+          </button>
+        </div>
+      </div>
+
+      {/* Formulário de adicionar nova vaga */}
+      <div className="vagas-form">
+        <div className="vagas-input-group">
+          <input
+            type="text"
+            placeholder="Cole o link da vaga (ex: https://...)"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => (e.key === "Enter" ? handleSave() : undefined)}
+          />
+          <button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="cv-upload-btn"
+          >
+            {saving ? "Salvando..." : "Adicionar"}
+          </button>
+        </div>
+        {err && <div className="vagas-error">{err}</div>}
+      </div>
+
+      {/* Lista de vagas */}
+      <div className="vagas-list">
+        {loading ? (
+          <div className="vagas-loading">Carregando…</div>
+        ) : itens.length === 0 ? (
+          <div className="vagas-empty">
+            Nenhum link cadastrado. Adicione o primeiro link acima.
+          </div>
+        ) : (
+          <div className="vagas-items">
+            {itens.map((v) => (
+              <div key={v.id} className="vagas-item">
+                <a
+                  href={v.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="vagas-link"
+                  title={v.titulo || v.url}
+                >
+                  {v.titulo || v.url}
+                </a>
+                
+                <span className="vagas-date">
+                  {new Date(v.criadoEm).toLocaleDateString()}
+                </span>
+                
+                <button
+                  onClick={() => handleRemove(v.id)}
+                  disabled={removing === v.id}
+                  className="vagas-remove-btn"
+                  title="Remover vaga"
+                >
+                  {removing === v.id ? "..." : "Remover"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ============================ PÁGINA ============================ */
 
 export default function MapeamentoPage() {
@@ -344,11 +521,9 @@ export default function MapeamentoPage() {
     mentoradoId: null,
   });
 
-  // 🛑 ESTADO DEDICADO AO ÚLTIMO CURRÍCULO
   const [curriculoInfo, setCurriculoInfo] = useState<MentoradoCurriculo | null>(
     null
   );
-  // 🎯 NOVO ESTADO: Histórico de currículos
   const [curriculosHistorico, setCurriculosHistorico] = useState<
     MentoradoCurriculo[]
   >([]);
@@ -407,7 +582,7 @@ export default function MapeamentoPage() {
     })();
   }, []);
 
-  // useEffect 2: Carrega a informação do último currículo (para o card principal)
+  // useEffect 2: Carrega a informação do último currículo
   useEffect(() => {
     const mentoradoId = usuario.mentoradoId;
     if (!mentoradoId) return;
@@ -425,17 +600,15 @@ export default function MapeamentoPage() {
     })();
   }, [usuario.mentoradoId]);
 
-  // 🎯 NOVO useEffect 3: Carrega a lista completa de currículos para o Histórico
+  // useEffect 3: Carrega a lista completa de currículos para o Histórico
   useEffect(() => {
     const mentoradoId = usuario.mentoradoId;
     if (!mentoradoId) return;
     (async () => {
       try {
         const { arquivos } = await listMentoradoCurriculos(mentoradoId);
-        // O backend deve retornar os arquivos do mais novo para o mais antigo, mas garantimos
         setCurriculosHistorico(arquivos);
       } catch (err: any) {
-        // Ignorar 404 (provavelmente pasta de uploads não existe ainda)
         const is404 = err?.response?.status === 404;
         if (!is404) {
           console.error(
@@ -486,21 +659,18 @@ export default function MapeamentoPage() {
       return;
     }
     try {
-      // 1. Upload
       const res = await uploadCurriculo(usuario.mentoradoId, file);
 
-      // 2. Atualiza o estado principal (curriculoInfo)
       const novoCurriculoInfo: MentoradoCurriculo = {
         filename: res.storageKey,
-        originalName: res.filename, // O nome original do arquivo
+        originalName: res.filename,
         mime: res.mime,
         size: res.tamanho,
-        url: res.url ?? "", // URL ABSOLUTA corrigida pelo seu API service
-        savedAt: new Date().toISOString(), // Usamos uma data temporária
+        url: res.url ?? "",
+        savedAt: new Date().toISOString(),
       };
       setCurriculoInfo(novoCurriculoInfo);
 
-      // 3. Atualiza o histórico (coloca o novo arquivo na primeira posição)
       setCurriculosHistorico((prev) => [
         novoCurriculoInfo,
         ...prev.filter((c) => c.filename !== novoCurriculoInfo.filename),
@@ -527,7 +697,7 @@ export default function MapeamentoPage() {
     }
   }
 
-  // 🎯 NOVO: Lógica de Download de Currículo por Nome (para o histórico)
+  // Lógica de Download de Currículo por Nome
   async function handleCvDownloadByName(filename: string) {
     if (!usuario.mentoradoId) return;
     try {
@@ -556,24 +726,14 @@ export default function MapeamentoPage() {
 
   const hasCv = Boolean(curriculoInfo?.originalName);
   const ultimoAudio = audios?.[0] || null;
-  // Filtra o último currículo do histórico para não o repetir
   const historicoSemUltimo = curriculosHistorico.slice(1);
   const temHistorico = historicoSemUltimo.length > 0;
 
   return (
     <div className="mentorados-home">
-      {/* ===== Scroll SÓ VERTICAL dentro da página ===== */}
-      <div
-        className="mentorados-scroll"
-        style={{
-          height: "100vh",
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        <MentoradoHeader />
+      <MentoradoHeader />
 
+      <div className="mentorados-content">
         <div className="mentorados-cards">
           {/* ======== CARD DO CURRÍCULO ======== */}
           <div
@@ -644,35 +804,18 @@ export default function MapeamentoPage() {
             />
           </div>
 
-          {/* 🎯 NOVO CARD: HISTÓRICO DE CURRÍCULOS */}
+          {/* HISTÓRICO DE CURRÍCULOS */}
           {temHistorico && (
-            <div className="mentorados-card">
+            <div className="mentorados-card mentorados-card--historico">
               <h4 style={{ margin: "0 0 10px 0", color: "#0f172a" }}>
                 Histórico de Currículos
               </h4>
-              <ul
-                style={{
-                  listStyleType: "none",
-                  padding: 0,
-                  margin: 0,
-                  maxHeight: 180,
-                  overflowY: "auto",
-                }}
-              >
+              <ul className="historico-list">
                 {historicoSemUltimo.map((c) => (
-                  <li
-                    key={c.filename}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 0",
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    <div style={{ fontSize: 13, color: "#444" }}>
-                      **{c.originalName}**
-                      <span style={{ color: "#777", marginLeft: 8 }}>
+                  <li key={c.filename} className="historico-item">
+                    <div className="historico-info">
+                      {c.originalName}
+                      <span className="historico-date">
                         {new Date(c.savedAt).toLocaleDateString("pt-BR")}
                       </span>
                     </div>
@@ -688,16 +831,9 @@ export default function MapeamentoPage() {
             </div>
           )}
 
-          {/* ======== CARD DE ÁUDIO (GRID) ======== */}
+          {/* ======== CARD DE ÁUDIO ======== */}
           <div className="mentorados-card mentorados-card--audio">
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-              }}
-            >
+            <div className="audio-header">
               <h4 style={{ margin: 0, color: "#0f172a" }}>Áudio</h4>
               <button
                 className="cv-upload-btn"
@@ -708,10 +844,8 @@ export default function MapeamentoPage() {
               </button>
             </div>
 
-            <div style={{ marginTop: 8, width: "100%" }}>
-              <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>
-                Último Áudio
-              </div>
+            <div className="audio-content">
+              <div className="audio-label">Último Áudio</div>
               {ultimoAudio ? (
                 <>
                   <audio
@@ -719,15 +853,8 @@ export default function MapeamentoPage() {
                     controls
                     style={{ width: "100%" }}
                   />
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      marginTop: 6,
-                    }}
-                  >
-                    <span style={{ fontSize: 12, color: "#777" }}>
+                  <div className="audio-info">
+                    <span className="audio-details">
                       {ultimoAudio.filename} •{" "}
                       {(ultimoAudio.size / 1024).toFixed(1)} KB
                     </span>
@@ -740,15 +867,15 @@ export default function MapeamentoPage() {
                   </div>
                 </>
               ) : (
-                <div style={{ fontSize: 13, color: "#999" }}>
+                <div className="audio-empty">
                   Nenhuma gravação encontrada.
                 </div>
               )}
             </div>
           </div>
 
-          {/* ======== Tabela de Vagas ======== */}
-          <VagasTable pageSize={10} />
+          {/* ======== SEÇÃO DE VAGAS (SEMPRE ABERTA) ======== */}
+          <VagasSection pageSize={10} />
 
           <img
             src="/images/dashboard.png"

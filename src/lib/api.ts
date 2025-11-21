@@ -772,6 +772,7 @@ export async function deleteUsuario(id: string) {
 }
 
 /* ============================ Vigências ============================ */
+// 🔥 CORREÇÃO: Adicionar export antes do tipo VigenciaDto
 export type VigenciaDto = {
   id: string;
   usuarioId: string;
@@ -918,4 +919,96 @@ export function pickUserIdFromJwt(jwt?: string | null): string | null {
     (v) => typeof v === "string" && v.trim().length > 0
   );
   return found ? String(found) : null;
+}
+
+// ============================ NOVAS FUNÇÕES ADICIONADAS ============================
+
+/**
+ * Busca um mentorado pelo ID
+ */
+export async function getMentoradoById(mentoradoId: string) {
+  const { data } = await api.get(`/mentorados/${mentoradoId}`);
+  return data;
+}
+
+/**
+ * Cria um novo mentorado
+ */
+export async function createMentorado(dto: any) {
+  const { data } = await api.post(`/mentorados`, dto);
+  return data;
+}
+
+/**
+ * Lista todos os mentorados (apenas para mentores/admin)
+ */
+export async function listMentorados() {
+  const { data } = await api.get(`/mentorados`);
+  return data;
+}
+
+/**
+ * Deleta um mentorado (apenas para mentores/admin)
+ */
+export async function deleteMentorado(id: string) {
+  const { data } = await api.delete(`/mentorados/${id}`);
+  return data;
+}
+
+/**
+ * Upload de avatar para usuário
+ */
+export async function uploadAvatar(usuarioId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post(`/usuarios/${usuarioId}/avatar`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return data;
+}
+
+/**
+ * Busca informações completas do usuário com mentorado
+ */
+export async function getUsuarioCompleto(id: string) {
+  const { data } = await api.get(`/usuarios/${id}`);
+  return data;
+}
+
+/**
+ * Lista mentores paginados
+ */
+export async function listMentoresPaginados(page: number = 1, limit: number = 20, filters?: any) {
+  const { data } = await api.get(`/usuarios/mentores`, {
+    params: { page, limit, ...filters }
+  });
+  return data;
+}
+
+/**
+ * Lista mentorados paginados
+ */
+export async function listMentoradosPaginados(page: number = 1, limit: number = 20, filters?: any) {
+  const { data } = await api.get(`/usuarios/mentorados`, {
+    params: { page, limit, ...filters }
+  });
+  return data;
+}
+
+/**
+ * Conta total de mentores
+ */
+export async function countMentores() {
+  const { data } = await api.get(`/usuarios/mentores/count`);
+  return data;
+}
+
+/**
+ * Conta total de mentorados
+ */
+export async function countMentorados() {
+  const { data } = await api.get(`/usuarios/mentorados/count`);
+  return data;
 }

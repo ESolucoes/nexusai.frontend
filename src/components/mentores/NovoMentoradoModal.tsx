@@ -312,8 +312,8 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={() => !d_loading && onClose()}>
-      <div className="modal-card large" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-card large">
         <div className="modal-header">
           <h3>Registrar Mentorado</h3>
           <button

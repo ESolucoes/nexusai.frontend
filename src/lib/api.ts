@@ -506,6 +506,12 @@ export async function createMyVagaLink(payload: CreateVagaLinkPayload) {
   return data;
 }
 
+// 🆕 FUNÇÃO DE REMOÇÃO ADICIONADA AQUI
+export async function removeMyVagaLink(id: string) {
+  const { data } = await api.delete<{ ok: boolean }>(`/vagas-links/${id}`);
+  return data;
+}
+
 /* ====================================================================== */
 /* ==================== MENTORADO CRONOGRAMA (NOVO) ===================== */
 /* ====================================================================== */

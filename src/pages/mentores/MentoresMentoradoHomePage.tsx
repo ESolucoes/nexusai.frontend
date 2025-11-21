@@ -9,27 +9,23 @@ import {
   listMentoradoAudios,
   uploadMentoradoAudio,
   downloadMentoradoAudio,
-  fetchAudioBlob, // === Currículo ===
+  fetchAudioBlob,
   listMentoradoCurriculos,
   uploadCurriculos,
   uploadCurriculo,
-  downloadCurriculo, // último (compat)
-  downloadCurriculoByName, // por nome (novo)
+  downloadCurriculo,
+  downloadCurriculoByName,
   type MentoradoCurriculo,
   type MentoradoAudio,
 } from "../../lib/api";
 
-// Tabela de Vagas (mantida)
-import VagasTable from "../../components/mentorados/VagasTable";
-
-// Tabela única do SSI (substitui o antigo SsiDashboardTabela)
+// Componentes
 import MentoradoSsiTabela from "../../components/mentorados/MentoradoSsiTabela";
-
-// Cronograma (8 semanas) + Rotina Fixa
 import CronogramaSemanasTable from "../../components/mentorados/CronogramaSemanasTable";
 import RotinaSemanalFixa from "../../components/mentorados/RotinaSemanalFixa";
+import VagasModal from "../../components/mentorados/VagasTable";
 
-/** Normaliza URL (caso backend retorne relativa) */
+/** Normaliza URL */
 function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
   if (/^https?:\/\//i.test(u)) return u;
@@ -39,7 +35,6 @@ function resolveImageUrl(u?: string | null): string | null {
   return `${base}/${path}`;
 }
 
-/** Adiciona cache-busting pra refletir avatar atualizado na hora */
 function cacheBust(u?: string | null): string | null {
   if (!u) return u ?? null;
   const sep = u.includes("?") ? "&" : "?";
@@ -62,7 +57,7 @@ function AudioRecorderModal(props: {
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]); // Descobre o melhor mime para gravar (tenta WAV, senão fallback)
+  const chunksRef = useRef<Blob[]>([]);
 
   function pickBestMime(): string | undefined {
     const candidates = [
@@ -179,7 +174,6 @@ function AudioRecorderModal(props: {
   async function save() {
     if (!blob) return;
     try {
-      // uploadMentoradoAudio já garante nome compatível (.wav/.mp3) com base no tipo
       const { ok, audio } = await uploadMentoradoAudio(mentoradoId, blob);
       if (!ok) throw new Error("upload falhou");
       onSaved?.(audio);
@@ -209,7 +203,7 @@ function AudioRecorderModal(props: {
     >
       <div
         style={{
-          width: 560,
+          width: "min(560px, 95vw)",
           background: "#fff",
           borderRadius: 12,
           padding: 18,
@@ -255,7 +249,7 @@ function AudioRecorderModal(props: {
           </select>
         </div>
 
-        <div style={{ display: "flex", gap: 10, margin: "14px 0" }}>
+        <div style={{ display: "flex", gap: 10, margin: "14px 0", flexWrap: "wrap" }}>
           {!recording && (
             <button onClick={start} className="cv-upload-btn">
               Iniciar Gravação
@@ -303,16 +297,13 @@ function AudioRecorderModal(props: {
   );
 }
 
-/* ============================ PÁGINA ============================ */
+/* ============================ PÁGINA PRINCIPAL ============================ */
 export default function MentoresMentoradoHomePage() {
   const [search] = useSearchParams();
-  const location = useLocation() as any; // origem: /mentores/home/mentorado?id=:usuarioId  (ou via state { usuarioId, mentoradoId })
+  const location = useLocation() as any;
   const navigate = useNavigate();
 
-  // 1. Tenta pegar o ID do usuário (base para a página)
   const usuarioIdParam = (search.get("id") || location?.state?.usuarioId || "").trim();
-
-  // 2. Tenta pegar o ID do mentorado diretamente (se for passado explicitamente)
   const mentoradoIdParam = (search.get("mentoradoId") || location?.state?.mentoradoId || "").trim();
 
   const [usuario, setUsuario] = useState<{
@@ -334,6 +325,7 @@ export default function MentoresMentoradoHomePage() {
   const [curriculos, setCurriculos] = useState<MentoradoCurriculo[]>([]);
   const [audios, setAudios] = useState<MentoradoAudio[]>([]);
   const [audioModalOpen, setAudioModalOpen] = useState(false);
+  const [vagasModalOpen, setVagasModalOpen] = useState(false);
   const [ultimoAudioSrc, setUltimoAudioSrc] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -392,7 +384,7 @@ export default function MentoresMentoradoHomePage() {
     })();
   }, [usuarioIdParam, mentoradoIdParam]);
 
-  // Prévia do último áudio (sempre atualiza quando a lista mudar)
+  // Prévia do último áudio
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -461,11 +453,6 @@ export default function MentoresMentoradoHomePage() {
     cvInputRef.current?.click();
   }
 
-  /**
-   * Função de upload de currículos.
-   * - Suporta upload de 1 ou múltiplos arquivos.
-   * - Atualiza a lista `curriculos` após o sucesso.
-   */
   async function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -494,9 +481,6 @@ export default function MentoresMentoradoHomePage() {
     }
   }
 
-  /**
-   * Função de download do currículo mais recente (compat).
-   */
   async function handleCvDownloadLatest() {
     if (!usuario.mentoradoId) return;
     try {
@@ -507,9 +491,6 @@ export default function MentoresMentoradoHomePage() {
     }
   }
 
-  /**
-   * Função de download de um currículo específico pelo nome (novo).
-   */
   async function handleCvDownloadByName(filename: string) {
     if (!usuario.mentoradoId) return;
     try {
@@ -520,10 +501,6 @@ export default function MentoresMentoradoHomePage() {
     }
   }
 
-  /**
-   * Lida com o clique no botão "Ver Perfil".
-   * Navega usando o mentoradoId (query param). Se não houver mentoradoId, avisa.
-   */
   function handleVerPerfilClick() {
     if (!usuario.mentoradoId) {
       alert("Mentorado não encontrado. Verifique se o mentorado já foi cadastrado.");
@@ -588,24 +565,35 @@ export default function MentoresMentoradoHomePage() {
                 <h2 style={{ fontFamily: "Montserrat" }}>{usuario.nome}</h2>
                 <p style={{ fontFamily: "Montserrat-Italic" }}>{usuario.email}</p>
 
-                <button
-                  onClick={handleVerPerfilClick}
-                  className="cv-upload-btn"
-                  style={{
-                    marginTop: 10,
-                    padding: "8px 16px",
-                    fontSize: 14,
-                    background: "#5cb85c",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    width: "fit-content",
-                  }}
-                >
-                  Ver Perfil
-                </button>
+                {/* BOTÕES ORGANIZADOS VERTICALMENTE */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12, width: "100%" }}>
+                  <button
+                    onClick={handleVerPerfilClick}
+                    className="cv-upload-btn blue-btn"
+                    style={{
+                      padding: "10px 16px",
+                      fontSize: 14,
+                      width: "100%",
+                    }}
+                  >
+                    Ver Perfil
+                  </button>
+                  
+                  <button
+                    onClick={() => setVagasModalOpen(true)}
+                    className="cv-upload-btn"
+                    style={{
+                      padding: "10px 16px",
+                      fontSize: 14,
+                      background: "#28a745",
+                      color: "#fff",
+                      border: "1px solid #28a745",
+                      width: "100%",
+                    }}
+                  >
+                    Ver Vagas
+                  </button>
+                </div>
               </div>
 
               <span className={badgeClass}>{usuario.accountType ?? ""}</span>
@@ -641,7 +629,7 @@ export default function MentoresMentoradoHomePage() {
                         <strong>Último:</strong> {ultimoCv.originalName || ultimoCv.filename}
                       </p>
                       <button onClick={handleCvDownloadLatest} className="cv-download" style={{ marginTop: 8 }}>
-                        Baixar Último (Compat)
+                        Baixar Último
                       </button>
                     </div>
                   )}
@@ -691,7 +679,7 @@ export default function MentoresMentoradoHomePage() {
                   style={{ marginTop: "auto" }}
                   disabled={!usuario.mentoradoId}
                 >
-                  Enviar Currículo(s) (PDF/DOC/DOCX)
+                  Enviar Currículo(s)
                 </button>
               </div>
 
@@ -721,11 +709,10 @@ export default function MentoresMentoradoHomePage() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
                 <h4 style={{ margin: 0, color: "#0f172a" }}>Áudio</h4>
                 <button
-                  className="cv-upload-btn"
+                  className="cv-upload-btn blue-btn"
                   onClick={() => setAudioModalOpen(true)}
                   title="Gravar áudio do mentorado"
                   disabled={!usuario.mentoradoId}
-                  style={{ background: "#0d6efd", color: "#fff", border: "none" }}
                 >
                   Gravar Áudio
                 </button>
@@ -736,7 +723,7 @@ export default function MentoresMentoradoHomePage() {
                 {audios?.[0] ? (
                   <>
                     <audio src={ultimoAudioSrc ?? ""} controls style={{ width: "100%" }} />
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 12, color: "#777" }}>
                         {audios[0].filename} • {(audios[0].size / 1024).toFixed(1)} KB
                       </span>
@@ -754,22 +741,17 @@ export default function MentoresMentoradoHomePage() {
               </div>
             </div>
 
-            {/* === Tabela única do SSI (12 semanas) - Ocupa a linha inteira (grid-span-12) === */}
+            {/* === Tabela única do SSI (12 semanas) === */}
             <div className="grid-span-12">
               <MentoradoSsiTabela />
             </div>
 
-            {/* === Cronograma (8 semanas) + Rotina Fixa - Dividem a largura (grid-span-6) === */}
+            {/* === Cronograma (8 semanas) + Rotina Fixa === */}
             <div className="grid-span-6">
               <CronogramaSemanasTable usuarioIdOverride={usuario.id} />
             </div>
             <div className="grid-span-6">
               <RotinaSemanalFixa usuarioIdOverride={usuario.id} />
-            </div>
-
-            {/* Tabela de Vagas */}
-            <div className="grid-span-12">
-              <VagasTable pageSize={10} />
             </div>
 
             <img src="/images/dashboard.png" alt="" className="mentorados-center-image" draggable={false} />
@@ -784,11 +766,16 @@ export default function MentoresMentoradoHomePage() {
           onClose={() => setAudioModalOpen(false)}
           mentoradoId={usuario.mentoradoId}
           onSaved={async (audio) => {
-            // coloca no topo e força recarregar preview
             setAudios((prev) => [audio, ...prev]);
           }}
         />
       )}
+
+      {/* MODAL DE VAGAS */}
+      <VagasModal
+        open={vagasModalOpen}
+        onClose={() => setVagasModalOpen(false)}
+      />
     </div>
   );
 }

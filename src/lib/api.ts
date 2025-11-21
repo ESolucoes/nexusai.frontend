@@ -68,6 +68,12 @@ const ORIGIN =
     : "http://localhost:5173";
 
 export const baseURL = (() => {
+  // 🔥 CORREÇÃO CRÍTICA: Em produção, usar URL absoluta do backend
+  if (import.meta.env.PROD) {
+    return API_URL || window.location.origin;
+  }
+  
+  // Em desenvolvimento, manter lógica anterior
   const root = API_URL || ORIGIN.replace(/\/+$/, "");
   const base = API_BASE ? `/${API_BASE}` : "";
   return `${root}${base}`.replace(/\/{2,}/g, "/").replace(":/", "://");
@@ -92,6 +98,13 @@ export function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
   if (isAbsoluteUrl(u)) return u;
   const trimmed = String(u).replace(/^\/+/, "");
+  
+  // 🔥 CORREÇÃO: Garantir que URLs relativas sejam resolvidas corretamente
+  if (trimmed.startsWith('uploads/')) {
+    return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
+  }
+  
+  // Para outros caminhos relativos
   return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
 }
 
@@ -241,11 +254,16 @@ export async function uploadUsuarioAvatar(usuarioId: string, file: File) {
     `/usuarios/${usuarioId}/avatar`,
     form
   );
-  (data as any).resolvedUrl = resolveImageUrl(data?.url || null);
-  (data as any).bustedUrl = cacheBust(
-    (data as any).resolvedUrl || data?.url || null
-  );
-  return data;
+  
+  // 🔥 CORREÇÃO: Garantir que a URL seja resolvida corretamente em produção
+  const resolvedUrl = resolveImageUrl(data?.url || null);
+  const bustedUrl = cacheBust(resolvedUrl || data?.url || null);
+  
+  return {
+    ...data,
+    resolvedUrl,
+    bustedUrl
+  };
 }
 
 /* ============================ Currículo ============================ */
@@ -292,16 +310,18 @@ export async function uploadCurriculo(
   
   if (!info) throw new Error("Upload concluído, mas informações do arquivo ausentes na resposta da API.");
   
+  // 🔥 CORREÇÃO: Resolver URL para produção
+  const resolvedUrl = resolveImageUrl(info.url ?? null);
+  
   return {
     sucesso: true,
     storageKey: info.filename ?? "",
     filename: info.originalName ?? "",
     mime: info.mime ?? "",
     tamanho: info.size ?? 0,
-    url: info.url ?? null,
+    url: resolvedUrl,
   };
 }
-
 
 /**
  * Envia múltiplos arquivos de currículo.
@@ -318,13 +338,20 @@ export async function uploadCurriculos(mentoradoId: string, files: File[]) {
     form
   );
   
-  return data as {
+  // 🔥 CORREÇÃO: Resolver URLs para produção
+  const response = data as {
     sucesso: boolean;
     total: number;
     arquivos: MentoradoCurriculo[];
   };
+  
+  response.arquivos = response.arquivos.map(arquivo => ({
+    ...arquivo,
+    url: resolveImageUrl(arquivo.url) || arquivo.url
+  }));
+  
+  return response;
 }
-
 
 /**
  * 🎯 FUNÇÃO CHAVE PARA O FRONTEND: Busca as informações do último currículo salvo (GET /latest-info).
@@ -339,11 +366,11 @@ export async function getLatestCurriculoInfo(
       `/mentorados/${mentoradoId}/curriculo/latest-info`
     );
     
-    // 🛑 CORREÇÃO APLICADA AQUI!
+    // 🔥 CORREÇÃO APLICADA AQUI!
     // O backend retorna '/mentorado/...', a função resolveImageUrl
     // adiciona 'http://api-url.com' na frente.
     if (data && data.url) {
-        (data as any).url = resolveImageUrl(data.url);
+        data.url = resolveImageUrl(data.url) || data.url;
     }
     
     return data;
@@ -356,7 +383,6 @@ export async function getLatestCurriculoInfo(
   }
 }
 
-
 /**
  * Baixa o currículo mais recente (sem passar o nome do arquivo).
  */
@@ -368,7 +394,6 @@ export async function downloadCurriculo(mentoradoId: string) {
   triggerBrowserDownload(data, name);
 }
 
-
 /**
  * Lista todos os currículos (se o backend salvar histórico).
  */
@@ -378,6 +403,13 @@ export async function listMentoradoCurriculos(mentoradoId: string) {
     total: number;
     arquivos: MentoradoCurriculo[];
   }>(`/mentorados/${mentoradoId}/curriculo/list`);
+  
+  // 🔥 CORREÇÃO: Resolver URLs para produção
+  data.arquivos = data.arquivos.map(arquivo => ({
+    ...arquivo,
+    url: resolveImageUrl(arquivo.url) || arquivo.url
+  }));
+  
   return data;
 }
 
@@ -439,6 +471,12 @@ export async function uploadMentoradoAudio(
     `/mentorados/${mentoradoId}/audios`,
     form
   );
+  
+  // 🔥 CORREÇÃO: Resolver URL para produção
+  if (data.audio && data.audio.url) {
+    data.audio.url = resolveImageUrl(data.audio.url) || data.audio.url;
+  }
+  
   return data;
 }
 
@@ -448,6 +486,13 @@ export async function listMentoradoAudios(mentoradoId: string) {
     total: number;
     audios: MentoradoAudio[];
   }>(`/mentorados/${mentoradoId}/audios`);
+  
+  // 🔥 CORREÇÃO: Resolver URLs para produção
+  data.audios = data.audios.map(audio => ({
+    ...audio,
+    url: resolveImageUrl(audio.url) || audio.url
+  }));
+  
   return data;
 }
 

@@ -12,6 +12,7 @@ import {
   listVigenciasPorUsuario,
   toggleVigencia,
   updateVigencia,
+  updateMentorTipo,
 } from "../../lib/api"
 
 function resolveImageUrl(u?: string | null): string | null {
@@ -34,6 +35,11 @@ export default function PerfilMentorPage() {
   const queryParams = new URLSearchParams(location.search)
   const usuarioIdQuery = queryParams.get("usuarioId")
 
+  const [currentUser, setCurrentUser] = useState<{
+    id?: string
+    isAdmin: boolean
+  }>({ id: undefined, isAdmin: false })
+
   const [usuario, setUsuario] = useState<{
     id?: string
     nome: string
@@ -41,12 +47,44 @@ export default function PerfilMentorPage() {
     telefone?: string | null
     avatarUrl?: string | null
     mentorTipo?: "admin" | "normal" | null
-  }>({ id: undefined, nome: "Carregando...", email: "", telefone: "", avatarUrl: null, mentorTipo: null })
+    mentorId?: string | null
+  }>({ 
+    id: undefined, 
+    nome: "Carregando...", 
+    email: "", 
+    telefone: "", 
+    avatarUrl: null, 
+    mentorTipo: null,
+    mentorId: null 
+  })
 
-  const [form, setForm] = useState({ nome: "", email: "", telefone: "", novaSenha: "" })
+  const [form, setForm] = useState({ 
+    nome: "", 
+    email: "", 
+    telefone: "", 
+    novaSenha: "",
+    mentorTipo: "normal" as "admin" | "normal"
+  })
   const [vigencias, setVigencias] = useState<Array<{ id: string; inicio: string; fim: string | null }>>([])
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Carregar dados do usuário atual
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      const userId = pickUserIdFromJwt(getToken())
+      if (!userId) return
+
+      try {
+        const userData = await getUsuarioById(userId)
+        const isAdmin = userData.mentor?.tipo === "admin"
+        setCurrentUser({ id: userId, isAdmin })
+      } catch (err) {
+        console.error("[PerfilMentor] erro ao carregar usuário atual:", err)
+      }
+    }
+    loadCurrentUser()
+  }, [])
 
   useEffect(() => {
     document.body.classList.remove("login-bg")
@@ -72,12 +110,14 @@ export default function PerfilMentorPage() {
           telefone: (data as any).telefone ?? "",
           avatarUrl: resolveImageUrl(data.avatarUrl) ?? null,
           mentorTipo: (data as any).mentor?.tipo ?? null,
+          mentorId: (data as any).mentor?.id ?? null,
         })
         setForm({
           nome: data.nome ?? "",
           email: data.email ?? "",
           telefone: ((data as any).telefone ?? "") as string,
           novaSenha: "",
+          mentorTipo: (data as any).mentor?.tipo ?? "normal"
         })
         const vigs = await listVigenciasPorUsuario(userId)
         setVigencias(vigs.map(v => ({ id: v.id, inicio: String(v.inicio), fim: v.fim ? String(v.fim) : null })))
@@ -128,6 +168,21 @@ export default function PerfilMentorPage() {
     }
   }
 
+  async function salvarTipoMentor() {
+    if (!usuario.mentorId || !currentUser.isAdmin) {
+      alert("Sem permissão para alterar tipo de mentor.")
+      return
+    }
+
+    try {
+      await updateMentorTipo(usuario.mentorId, { tipo: form.mentorTipo })
+      setUsuario(prev => ({ ...prev, mentorTipo: form.mentorTipo }))
+      alert("Tipo de mentor atualizado!")
+    } catch (e: any) {
+      alert(e?.response?.data?.message ?? "Falha ao atualizar tipo de mentor.")
+    }
+  }
+
   const ativa = vigencias.find(v => v.fim === null) || null
 
   async function onToggleVigencia() {
@@ -152,7 +207,11 @@ export default function PerfilMentorPage() {
   }
 
   async function excluirUsuario() {
-    if (!usuario.id) return
+    if (!usuario.id || !currentUser.isAdmin) {
+      alert("Apenas mentores administradores podem excluir usuários.")
+      return
+    }
+
     if (!confirm("Tem certeza que deseja excluir DEFINITIVAMENTE este usuário?")) return
     try {
       await deleteUsuario(usuario.id)
@@ -163,98 +222,202 @@ export default function PerfilMentorPage() {
     }
   }
 
+  const podeExcluirUsuario = currentUser.isAdmin
+  const podeEditarTipoMentor = currentUser.isAdmin && usuario.mentorId
+
   return (
-    <div className="mentorados-home">
-      {/* Container sem scroll interno */}
-      <div className="mentorados-scroll">
-        <Header />
-
-        <div className="mentorados-cards">
-          {/* CARD USUÁRIO */}
-          <div className="mentorados-card grid-span-12">
-            <img
-              src={avatarSrc}
-              alt="Usuário"
-              className="mentorados-avatar"
-              draggable={false}
-              onClick={() => fileInputRef.current?.click()}
-              onError={(e) => {
-                const img = e.currentTarget as HTMLImageElement
-                if (img.src !== window.location.origin + avatarFallback && img.src !== avatarFallback) {
-                  img.src = avatarFallback
-                }
-              }}
-            />
-            <input type="file" ref={fileInputRef} style={{ display: "none" }} accept="image/*" onChange={handleAvatarChange} />
-            <div className="mentorados-user-info">
-              <h2>{usuario.nome}</h2>
-              <p>{usuario.email}</p>
-            </div>
-          </div>
-
-          {/* EDITAR USUÁRIO */}
-          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
-            <div style={{ width: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Editar Usuário</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <input placeholder="Nome" value={form.nome} onChange={e => setForm(s => ({ ...s, nome: e.target.value }))} />
-                <input placeholder="E-mail" value={form.email} onChange={e => setForm(s => ({ ...s, email: e.target.value }))} />
-                <input placeholder="Telefone" value={form.telefone} onChange={e => setForm(s => ({ ...s, telefone: e.target.value }))} />
-                <input placeholder="Nova senha (opcional)" type="password" value={form.novaSenha} onChange={e => setForm(s => ({ ...s, novaSenha: e.target.value }))} />
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <button className="cv-upload-btn" onClick={salvarUsuario} disabled={loading}>Salvar</button>
+    <div className="perfil-mentor-page">
+      <Header />
+      
+      {/* CONTAINER COM SCROLL */}
+      <div className="perfil-scroll-container">
+        <div className="perfil-container">
+          <div className="perfil-header">
+            <div className="perfil-avatar-section">
+              <img
+                src={avatarSrc}
+                alt="Usuário"
+                className="perfil-avatar"
+                draggable={false}
+                onClick={() => fileInputRef.current?.click()}
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement
+                  if (img.src !== window.location.origin + avatarFallback && img.src !== avatarFallback) {
+                    img.src = avatarFallback
+                  }
+                }}
+              />
+              <input type="file" ref={fileInputRef} style={{ display: "none" }} accept="image/*" onChange={handleAvatarChange} />
+              <div className="perfil-user-info">
+                <h1>{usuario.nome}</h1>
+                <p>{usuario.email}</p>
+                {usuario.telefone && <p className="perfil-telefone">{usuario.telefone}</p>}
+                {usuario.mentorTipo && (
+                  <span className={`perfil-badge ${usuario.mentorTipo}`}>
+                    {usuario.mentorTipo === "admin" ? "Administrador" : "Mentor Normal"}
+                  </span>
+                )}
+                {currentUser.isAdmin && (
+                  <span className="perfil-badge admin" style={{ background: '#6f42c1' }}>
+                    Você é Admin
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* VIGÊNCIA */}
-          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
-            <div style={{ width: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Vigência</h3>
-              <div style={{ marginBottom: 8 }}>
-                <strong>Status:</strong> {ativa ? "Ativa" : "Inativa"}
-                <button className="cv-upload-btn" style={{ marginLeft: 10 }} onClick={onToggleVigencia}>
-                  {ativa ? "Desativar" : "Ativar agora"}
+          <div className="perfil-content">
+            {/* SEÇÃO EDITAR USUÁRIO */}
+            <div className="perfil-section">
+              <h2>Editar Informações</h2>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Nome Completo</label>
+                  <input 
+                    type="text" 
+                    value={form.nome} 
+                    onChange={e => setForm(s => ({ ...s, nome: e.target.value }))}
+                    placeholder="Seu nome completo"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>E-mail</label>
+                  <input 
+                    type="email" 
+                    value={form.email} 
+                    onChange={e => setForm(s => ({ ...s, email: e.target.value }))}
+                    placeholder="seu@email.com"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Telefone</label>
+                  <input 
+                    type="tel" 
+                    value={form.telefone} 
+                    onChange={e => setForm(s => ({ ...s, telefone: e.target.value }))}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Nova Senha (opcional)</label>
+                  <input 
+                    type="password" 
+                    value={form.novaSenha} 
+                    onChange={e => setForm(s => ({ ...s, novaSenha: e.target.value }))}
+                    placeholder="Deixe em branco para manter a atual"
+                  />
+                </div>
+              </div>
+              <button className="btn-primary" onClick={salvarUsuario} disabled={loading}>
+                {loading ? "Salvando..." : "Salvar Alterações"}
+              </button>
+            </div>
+
+            {/* SEÇÃO TIPO DE MENTOR (APENAS ADMINS) */}
+            {podeEditarTipoMentor && (
+              <div className="perfil-section">
+                <h2>Tipo de Mentor</h2>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Tipo de Acesso</label>
+                    <select 
+                      value={form.mentorTipo}
+                      onChange={e => setForm(s => ({ ...s, mentorTipo: e.target.value as "admin" | "normal" }))}
+                      className="mentor-type-select"
+                    >
+                      <option value="normal">Mentor Normal</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </div>
+                </div>
+                <button className="btn-primary" onClick={salvarTipoMentor}>
+                  Atualizar Tipo de Mentor
+                </button>
+                <p className="form-help-text">
+                  Apenas administradores podem alterar o tipo de mentor.
+                </p>
+              </div>
+            )}
+
+            {/* SEÇÃO VIGÊNCIA */}
+            <div className="perfil-section">
+              <h2>Gerenciar Vigência</h2>
+              <div className="vigencia-status">
+                <div className="status-info">
+                  <strong>Status Atual:</strong>
+                  <span className={`status-badge ${ativa ? "ativa" : "inativa"}`}>
+                    {ativa ? "Ativa" : "Inativa"}
+                  </span>
+                </div>
+                <button className="btn-secondary" onClick={onToggleVigencia}>
+                  {ativa ? "Desativar Vigência" : "Ativar Vigência"}
                 </button>
               </div>
-              {/* LISTA DE VIGÊNCIAS SEM SCROLL INTERNO */}
-              <div style={{ borderTop: "1px solid #eee", paddingTop: 8 }}>
-                {vigencias.map(v => (
-                  <div key={v.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <label style={{ fontSize: 12, color: "#555" }}>Início</label>
-                    <label style={{ fontSize: 12, color: "#555" }}>Fim</label>
-                    <span />
-                    <input type="datetime-local" value={v.inicio.slice(0, 16)} onChange={e => setVigencias(arr => arr.map(x => x.id === v.id ? { ...x, inicio: e.target.value } : x))} />
-                    <input type="datetime-local" value={v.fim ? v.fim.slice(0, 16) : ""} onChange={e => setVigencias(arr => arr.map(x => x.id === v.id ? { ...x, fim: e.target.value || null } : x))} />
-                    <button className="cv-upload-btn" onClick={() => salvarDatasVigencia(v)}>Salvar</button>
-                  </div>
-                ))}
-                {!vigencias.length && <div style={{ color: "#666", fontSize: 14 }}>Nenhuma vigência cadastrada ainda.</div>}
+
+              {vigencias.length > 0 && (
+                <div className="vigencia-list">
+                  <h3>Histórico de Vigencias</h3>
+                  {vigencias.map(v => (
+                    <div key={v.id} className="vigencia-item">
+                      <div className="vigencia-dates">
+                        <div className="date-group">
+                          <label>Início</label>
+                          <input 
+                            type="datetime-local" 
+                            value={v.inicio.slice(0, 16)} 
+                            onChange={e => setVigencias(arr => arr.map(x => x.id === v.id ? { ...x, inicio: e.target.value } : x))} 
+                          />
+                        </div>
+                        <div className="date-group">
+                          <label>Fim</label>
+                          <input 
+                            type="datetime-local" 
+                            value={v.fim ? v.fim.slice(0, 16) : ""} 
+                            onChange={e => setVigencias(arr => arr.map(x => x.id === v.id ? { ...x, fim: e.target.value || null } : x))} 
+                          />
+                        </div>
+                      </div>
+                      <button className="btn-small" onClick={() => salvarDatasVigencia(v)}>
+                        Atualizar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!vigencias.length && (
+                <div className="empty-state">
+                  <p>Nenhuma vigência cadastrada ainda.</p>
+                </div>
+              )}
+            </div>
+
+            {/* SEÇÃO EXCLUIR CONTA (APENAS ADMINS) */}
+            <div className="perfil-section danger-section">
+              <h2>Zona de Perigo</h2>
+              <div className="danger-content">
+                <div className="warning-text">
+                  <h3>Excluir Conta</h3>
+                  <p>
+                    {podeExcluirUsuario 
+                      ? "Esta ação é irreversível. Todos os dados serão permanentemente removidos do sistema."
+                      : "Apenas mentores administradores podem excluir usuários do sistema."
+                    }
+                  </p>
+                </div>
+                <button 
+                  className={`btn-danger ${!podeExcluirUsuario ? 'btn-disabled' : ''}`} 
+                  onClick={excluirUsuario}
+                  disabled={!podeExcluirUsuario}
+                >
+                  {podeExcluirUsuario ? "Excluir Minha Conta" : "Sem Permissão"}
+                </button>
               </div>
-            </div>
-          </div>
-
-          {/* MENTOR */}
-          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#0f172a" }}>
-            <div style={{ width: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Mentor</h3>
-              <p style={{ margin: 0 }}>Tipo: <strong>{usuario.mentorTipo ?? "—"}</strong></p>
-              <small style={{ color: "#666" }}>Obs.: alteração do tipo requer o ID do mentor; a API atual não expõe o id pelo usuário.</small>
-            </div>
-          </div>
-
-          {/* EXCLUIR USUÁRIO */}
-          <div className="mentorados-card grid-span-12" style={{ background: "#fff", color: "#b00020" }}>
-            <div style={{ width: "100%" }}>
-              <h3 style={{ marginTop: 0, color: "#b00020" }}>Excluir Usuário</h3>
-              <p style={{ marginTop: 0, color: "#7a0015" }}>Esta ação é irreversível.</p>
-              <button className="cv-upload-btn" onClick={excluirUsuario}>Excluir</button>
             </div>
           </div>
         </div>
 
-        <img src="/images/dashboard.png" alt="" className="mentorados-center-image" draggable={false} />
+        <img src="/images/dashboard.png" alt="" className="perfil-bg-image" draggable={false} />
       </div>
     </div>
   )

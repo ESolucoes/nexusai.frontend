@@ -31,17 +31,32 @@ function formatPhoneBR(value: string) {
 
 function combineDateWithNow(dateStr: string, now: Date, addSeconds = 0) {
   const [y, m, d] = dateStr.split("-").map(Number);
+
+  // Garantir que a data é válida
+  if (!y || !m || !d) {
+    throw new Error("Data inválida");
+  }
+
+  // Criar data no fuso horário local e converter para UTC
   const local = new Date(
     y,
-    (m ?? 1) - 1,
-    d ?? 1,
+    m - 1,
+    d,
     now.getHours(),
     now.getMinutes(),
-    now.getSeconds(),
-    now.getMilliseconds()
+    now.getSeconds()
   );
-  if (addSeconds > 0) local.setSeconds(local.getSeconds() + addSeconds);
-  return local.toISOString();
+
+  // Converter para ISO string (UTC)
+  const isoString = local.toISOString();
+
+  if (addSeconds > 0) {
+    const newDate = new Date(isoString);
+    newDate.setSeconds(newDate.getSeconds() + addSeconds);
+    return newDate.toISOString();
+  }
+
+  return isoString;
 }
 
 async function ativarVigencia(usuarioId: string) {
@@ -66,7 +81,9 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
   const [d_selectedMentorId, setD_SelectedMentorId] = useState("");
   const [d_mentorId, setD_MentorId] = useState("");
 
-  const [d_tipo, setD_Tipo] = useState<"Executive" | "First Class">("Executive");
+  const [d_tipo, setD_Tipo] = useState<"Executive" | "First Class">(
+    "Executive"
+  );
 
   const [d_rg, setD_Rg] = useState("");
   const [d_cpf, setD_Cpf] = useState("");
@@ -86,12 +103,24 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
   const [d_msg, setD_Msg] = useState<string | null>(null);
   const [d_err, setD_Err] = useState<string | null>(null);
 
-  const d_emailValido = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d_email.trim()), [d_email]);
+  const d_emailValido = useMemo(
+    () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d_email.trim()),
+    [d_email]
+  );
   const d_nomeValido = useMemo(() => d_nome.trim().length >= 3, [d_nome]);
-  const d_senhaValida = useMemo(() => (d_senha?.trim().length ?? 0) >= 8, [d_senha]);
-  const d_telefoneValido = useMemo(() => d_telefone.replace(/\D/g, "").length >= 10, [d_telefone]);
+  const d_senhaValida = useMemo(
+    () => (d_senha?.trim().length ?? 0) >= 8,
+    [d_senha]
+  );
+  const d_telefoneValido = useMemo(
+    () => d_telefone.replace(/\D/g, "").length >= 10,
+    [d_telefone]
+  );
   const d_inicioValido = useMemo(() => Boolean(d_inicioVig), [d_inicioVig]);
-  const d_dataNascValida = useMemo(() => /^\d{4}-\d{2}-\d{2}$/.test(d_dataNascimento), [d_dataNascimento]);
+  const d_dataNascValida = useMemo(
+    () => /^\d{4}-\d{2}-\d{2}$/.test(d_dataNascimento),
+    [d_dataNascimento]
+  );
 
   function onChangeMentor(mentorId: string) {
     setD_SelectedMentorId(mentorId);
@@ -102,15 +131,27 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
     setMentoresCarregando(true);
     setMentoresErro(null);
     try {
-      const { data } = await api.get<{ items: MentorUsuarioListItem[]; meta?: any }>(`/usuarios/mentores?limit=200&page=1`);
-      const arr = Array.isArray((data as any)?.items) ? (data as any).items : [];
+      const { data } = await api.get<{
+        items: MentorUsuarioListItem[];
+        meta?: any;
+      }>(`/usuarios/mentores?limit=200&page=1`);
+      const arr = Array.isArray((data as any)?.items)
+        ? (data as any).items
+        : [];
       setMentores(arr);
-      if (d_selectedMentorId && !arr.some((m: MentorUsuarioListItem) => m.id === d_selectedMentorId)) {
+      if (
+        d_selectedMentorId &&
+        !arr.some((m: MentorUsuarioListItem) => m.id === d_selectedMentorId)
+      ) {
         setD_SelectedMentorId("");
         setD_MentorId("");
       }
     } catch (e: any) {
-      setMentoresErro(e?.response?.data?.message || e?.response?.data?.error || "Não foi possível carregar a lista de mentores.");
+      setMentoresErro(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          "Não foi possível carregar a lista de mentores."
+      );
       setMentores([]);
     } finally {
       setMentoresCarregando(false);
@@ -126,43 +167,89 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
     if (d_loading) return;
     setD_Msg(null);
     setD_Err(null);
-    if (!d_nomeValido) return setD_Err("Informe um nome válido (mín. 3 caracteres).");
+
+    // Validações básicas
+    if (!d_nomeValido)
+      return setD_Err("Informe um nome válido (mín. 3 caracteres).");
     if (!d_emailValido) return setD_Err("Informe um e-mail válido.");
     if (!d_telefoneValido) return setD_Err("Informe um telefone válido.");
-    if (!d_senhaValida) return setD_Err("A senha deve ter pelo menos 8 caracteres.");
+    if (!d_senhaValida)
+      return setD_Err("A senha deve ter pelo menos 8 caracteres.");
     if (!d_inicioValido) return setD_Err("Selecione o início da vigência.");
     if (!d_mentorId.trim()) return setD_Err("Selecione o mentor.");
     if (!d_rg.trim()) return setD_Err("Informe o RG.");
     if (!d_cpf.trim()) return setD_Err("Informe o CPF.");
     if (!d_nomePai.trim()) return setD_Err("Informe o nome do pai.");
     if (!d_nomeMae.trim()) return setD_Err("Informe o nome da mãe.");
-    if (!d_dataNascValida) return setD_Err("Informe a data de nascimento no formato YYYY-MM-DD.");
+    if (!d_dataNascValida)
+      return setD_Err("Informe a data de nascimento no formato YYYY-MM-DD.");
     if (!d_rua.trim()) return setD_Err("Informe a rua.");
     if (!d_numero.trim()) return setD_Err("Informe o número.");
     if (!d_cep.trim()) return setD_Err("Informe o CEP.");
-    if (String(d_pretClt).trim() === "" || String(d_pretPj).trim() === "") return setD_Err("Informe as pretensões CLT e PJ.");
+    if (String(d_pretClt).trim() === "" || String(d_pretPj).trim() === "")
+      return setD_Err("Informe as pretensões CLT e PJ.");
+
     setD_Loading(true);
+
     try {
-      const now = new Date();
-      const inicioISO = combineDateWithNow(d_inicioVig, now, 30);
-      let fimISO: string | null = null;
-      if (d_fimVig) {
-        const temp = new Date(combineDateWithNow(d_fimVig, now));
-        const inicioDate = new Date(inicioISO);
-        if (temp < inicioDate) temp.setTime(inicioDate.getTime() + 1000);
-        fimISO = temp.toISOString();
-      }
-      const { data: usuarioCriado } = await api.post("/usuarios", {
+      console.log("🚀 Iniciando criação de mentorado...");
+
+      // 1. Criar usuário
+      console.log("1. Criando usuário...");
+      const usuarioPayload = {
         nome: d_nome.trim(),
         email: d_email.trim(),
         telefone: d_telefone.replace(/\D/g, ""),
         senha: d_senha.trim(),
-      });
-      const vigPayload: any = { email: usuarioCriado.email, inicio: inicioISO };
-      if (fimISO) vigPayload.fim = fimISO;
-      await api.post("/vigencias", vigPayload);
-      await ativarVigencia(usuarioCriado.id);
-      await api.post("/mentorados", {
+      };
+
+      console.log("Payload usuário:", usuarioPayload);
+
+      const { data: usuarioCriado } = await api.post(
+        "/usuarios",
+        usuarioPayload
+      );
+      console.log("✅ Usuário criado:", usuarioCriado);
+
+      // 2. Criar vigência
+      console.log("2. Criando vigência...");
+      try {
+        const now = new Date();
+        const inicioISO = combineDateWithNow(d_inicioVig, now, 30);
+        let fimISO: string | null = null;
+
+        if (d_fimVig) {
+          const temp = new Date(combineDateWithNow(d_fimVig, now));
+          const inicioDate = new Date(inicioISO);
+          if (temp <= inicioDate) {
+            temp.setTime(inicioDate.getTime() + 24 * 60 * 60 * 1000); // +1 dia
+          }
+          fimISO = temp.toISOString();
+        }
+
+        const vigPayload: any = {
+          email: usuarioCriado.email,
+          inicio: inicioISO,
+        };
+        if (fimISO) vigPayload.fim = fimISO;
+
+        console.log("Payload vigência:", vigPayload);
+        await api.post("/vigencias", vigPayload);
+        console.log("✅ Vigência criada");
+      } catch (vigError: any) {
+        console.error("❌ Erro ao criar vigência:", vigError);
+        console.log("⚠️  Continuando sem vigência...");
+      }
+
+      // 3. Criar mentorado - CORREÇÃO APLICADA AQUI
+      console.log("3. Criando mentorado...");
+
+      // Tratar LinkedIn como realmente opcional - se estiver vazio, envia null
+      const linkedinValue = d_linkedin.trim();
+      const linkedinFinal =
+        linkedinValue && linkedinValue.length > 0 ? linkedinValue : null;
+
+      const mentoradoPayload = {
         usuarioId: usuarioCriado.id,
         mentorId: d_mentorId.trim(),
         tipo: d_tipo,
@@ -178,15 +265,47 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
         cargoObjetivo: d_cargoObjetivo.trim(),
         pretensaoClt: Number(d_pretClt),
         pretensaoPj: Number(d_pretPj),
-        linkedin: d_linkedin.trim(),
+        linkedin: linkedinFinal, // Agora pode ser null se estiver vazio
+      };
+
+      console.log("🔍 DEBUG - Dados enviados para mentorado:", {
+        usuarioId: usuarioCriado.id,
+        mentorId: d_mentorId.trim(),
+        tipo: d_tipo,
+        linkedin: linkedinFinal,
+        linkedinType: typeof linkedinFinal,
+        linkedinIsNull: linkedinFinal === null,
+        linkedinIsEmpty: linkedinFinal === "",
       });
-      setD_Msg("Mentorado cadastrado com sucesso!");
+
+      console.log("Payload mentorado:", mentoradoPayload);
+
+      const { data: mentoradoCriado } = await api.post(
+        "/mentorados",
+        mentoradoPayload
+      );
+      console.log("✅ Mentorado criado:", mentoradoCriado);
+
+      setD_Msg("🎉 Mentorado cadastrado com sucesso!");
+
       setTimeout(() => {
         onSuccess();
-      }, 700);
+      }, 1000);
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.response?.data?.error || "Não foi possível concluir o cadastro do mentorado.";
-      setD_Err(String(msg));
+      console.error("💥 Erro completo:", e);
+      const errorMsg =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Não foi possível concluir o cadastro do mentorado.";
+
+      console.log("Detalhes do erro:", {
+        status: e?.response?.status,
+        data: e?.response?.data,
+        url: e?.config?.url,
+      });
+
+      setD_Err(String(errorMsg));
     } finally {
       setD_Loading(false);
     }
@@ -197,22 +316,49 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
       <div className="modal-card large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Registrar Mentorado</h3>
-          <button className="modal-close" onClick={() => !d_loading && onClose()}>×</button>
+          <button
+            className="modal-close"
+            onClick={() => !d_loading && onClose()}
+          >
+            ×
+          </button>
         </div>
         <form className="modal-form" onSubmit={submitNovoMentorado} noValidate>
           <h4 className="section-title">Dados do usuário</h4>
           <div className="grid-3">
             <div className="form-group">
               <label>Nome</label>
-              <input type="text" placeholder="Nome completo" value={d_nome} onChange={(e) => setD_Nome(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                placeholder="Nome completo"
+                value={d_nome}
+                onChange={(e) => setD_Nome(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>E-mail</label>
-              <input type="email" placeholder="email@exemplo.com" value={d_email} onChange={(e) => setD_Email(e.target.value)} disabled={d_loading} required />
+              <input
+                type="email"
+                placeholder="email@exemplo.com"
+                value={d_email}
+                onChange={(e) => setD_Email(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>Telefone</label>
-              <input type="tel" inputMode="tel" placeholder="(00) 00000-0000" value={d_telefone} onChange={(e) => setD_Telefone(formatPhoneBR(e.target.value))} disabled={d_loading} required />
+              <input
+                type="tel"
+                inputMode="tel"
+                placeholder="(00) 00000-0000"
+                value={d_telefone}
+                onChange={(e) => setD_Telefone(formatPhoneBR(e.target.value))}
+                disabled={d_loading}
+                required
+              />
             </div>
           </div>
 
@@ -220,8 +366,22 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
             <div className="form-group">
               <label>Senha</label>
               <div className="password-row">
-                <input type={d_mostrarSenha ? "text" : "password"} placeholder="Mínimo de 8 caracteres" value={d_senha} onChange={(e) => setD_Senha(e.target.value)} disabled={d_loading} required />
-                <a href="#" onClick={(e) => { e.preventDefault(); setD_MostrarSenha((v) => !v); }} className="toggle-pass">
+                <input
+                  type={d_mostrarSenha ? "text" : "password"}
+                  placeholder="Mínimo de 8 caracteres"
+                  value={d_senha}
+                  onChange={(e) => setD_Senha(e.target.value)}
+                  disabled={d_loading}
+                  required
+                />
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setD_MostrarSenha((v) => !v);
+                  }}
+                  className="toggle-pass"
+                >
                   {d_mostrarSenha ? "Ocultar" : "Mostrar"}
                 </a>
               </div>
@@ -232,11 +392,22 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
           <div className="grid-2">
             <div className="form-group">
               <label>Início da vigência</label>
-              <input type="date" value={d_inicioVig} onChange={(e) => setD_InicioVig(e.target.value)} disabled={d_loading} required />
+              <input
+                type="date"
+                value={d_inicioVig}
+                onChange={(e) => setD_InicioVig(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>Fim da vigência (opcional)</label>
-              <input type="date" value={d_fimVig} onChange={(e) => setD_FimVig(e.target.value)} disabled={d_loading} />
+              <input
+                type="date"
+                value={d_fimVig}
+                onChange={(e) => setD_FimVig(e.target.value)}
+                disabled={d_loading}
+              />
             </div>
           </div>
 
@@ -244,55 +415,114 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
           <div className="grid-3">
             <div className="form-group">
               <label>Mentor</label>
-              <select value={d_selectedMentorId} onChange={(e) => onChangeMentor(e.target.value)} disabled={d_loading || mentoresCarregando} required>
-                <option value="">{mentoresCarregando ? "Carregando mentores…" : "Selecione um mentor"}</option>
+              <select
+                value={d_selectedMentorId}
+                onChange={(e) => onChangeMentor(e.target.value)}
+                disabled={d_loading || mentoresCarregando}
+                required
+              >
+                <option value="">
+                  {mentoresCarregando
+                    ? "Carregando mentores…"
+                    : "Selecione um mentor"}
+                </option>
                 {mentores.map((m: MentorUsuarioListItem) => (
                   <option key={m.id} value={m.id}>
                     {m.nome} — {m.email}
                   </option>
                 ))}
               </select>
-              {mentoresErro && <small style={{ color: "#991b1b", fontWeight: 700 }}>{mentoresErro}</small>}
-              {!mentoresCarregando && !mentoresErro && mentores.length === 0 && (
-                <small style={{ color: "#334155", fontWeight: 700 }}>Nenhum mentor encontrado.</small>
+              {mentoresErro && (
+                <small style={{ color: "#991b1b", fontWeight: 700 }}>
+                  {mentoresErro}
+                </small>
               )}
+              {!mentoresCarregando &&
+                !mentoresErro &&
+                mentores.length === 0 && (
+                  <small style={{ color: "#334155", fontWeight: 700 }}>
+                    Nenhum mentor encontrado.
+                  </small>
+                )}
             </div>
             <div className="form-group">
               <label>Tipo</label>
-              <select value={d_tipo} onChange={(e) => setD_Tipo(e.target.value as "Executive" | "First Class")} disabled={d_loading}>
+              <select
+                value={d_tipo}
+                onChange={(e) =>
+                  setD_Tipo(e.target.value as "Executive" | "First Class")
+                }
+                disabled={d_loading}
+              >
                 <option value="Executive">Executive</option>
                 <option value="First Class">First Class</option>
               </select>
             </div>
             <div className="form-group">
               <label>Data de Nascimento</label>
-              <input type="date" value={d_dataNascimento} onChange={(e) => setD_DataNascimento(e.target.value)} disabled={d_loading} required />
+              <input
+                type="date"
+                value={d_dataNascimento}
+                onChange={(e) => setD_DataNascimento(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
           </div>
 
           <div className="grid-3">
             <div className="form-group">
               <label>RG</label>
-              <input type="text" value={d_rg} onChange={(e) => setD_Rg(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_rg}
+                onChange={(e) => setD_Rg(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>CPF</label>
-              <input type="text" value={d_cpf} onChange={(e) => setD_Cpf(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_cpf}
+                onChange={(e) => setD_Cpf(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>LinkedIn (opcional)</label>
-              <input type="url" placeholder="https://linkedin.com/in/usuario" value={d_linkedin} onChange={(e) => setD_Linkedin(e.target.value)} disabled={d_loading} />
+              <input
+                type="text"
+                placeholder="https://linkedin.com/in/usuario"
+                value={d_linkedin}
+                onChange={(e) => setD_Linkedin(e.target.value)}
+                disabled={d_loading}
+              />
             </div>
           </div>
 
           <div className="grid-2">
             <div className="form-group">
               <label>Nome do Pai</label>
-              <input type="text" value={d_nomePai} onChange={(e) => setD_NomePai(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_nomePai}
+                onChange={(e) => setD_NomePai(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>Nome da Mãe</label>
-              <input type="text" value={d_nomeMae} onChange={(e) => setD_NomeMae(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_nomeMae}
+                onChange={(e) => setD_NomeMae(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
           </div>
 
@@ -300,19 +530,42 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
           <div className="grid-4">
             <div className="form-group">
               <label>Rua</label>
-              <input type="text" value={d_rua} onChange={(e) => setD_Rua(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_rua}
+                onChange={(e) => setD_Rua(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>Número</label>
-              <input type="text" value={d_numero} onChange={(e) => setD_Numero(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_numero}
+                onChange={(e) => setD_Numero(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>Complemento (opcional)</label>
-              <input type="text" value={d_complemento} onChange={(e) => setD_Complemento(e.target.value)} disabled={d_loading} />
+              <input
+                type="text"
+                value={d_complemento}
+                onChange={(e) => setD_Complemento(e.target.value)}
+                disabled={d_loading}
+              />
             </div>
             <div className="form-group">
               <label>CEP</label>
-              <input type="text" value={d_cep} onChange={(e) => setD_Cep(e.target.value)} disabled={d_loading} required />
+              <input
+                type="text"
+                value={d_cep}
+                onChange={(e) => setD_Cep(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
           </div>
 
@@ -320,15 +573,34 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
           <div className="grid-3">
             <div className="form-group">
               <label>Cargo Objetivo</label>
-              <input type="text" value={d_cargoObjetivo} onChange={(e) => setD_CargoObjetivo(e.target.value)} disabled={d_loading} />
+              <input
+                type="text"
+                value={d_cargoObjetivo}
+                onChange={(e) => setD_CargoObjetivo(e.target.value)}
+                disabled={d_loading}
+              />
             </div>
             <div className="form-group">
               <label>Pretensão CLT (R$)</label>
-              <input type="number" inputMode="numeric" value={d_pretClt} onChange={(e) => setD_PretClt(e.target.value)} disabled={d_loading} required />
+              <input
+                type="number"
+                inputMode="numeric"
+                value={d_pretClt}
+                onChange={(e) => setD_PretClt(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
             <div className="form-group">
               <label>Pretensão PJ (R$)</label>
-              <input type="number" inputMode="numeric" value={d_pretPj} onChange={(e) => setD_PretPj(e.target.value)} disabled={d_loading} required />
+              <input
+                type="number"
+                inputMode="numeric"
+                value={d_pretPj}
+                onChange={(e) => setD_PretPj(e.target.value)}
+                disabled={d_loading}
+                required
+              />
             </div>
           </div>
 
@@ -338,7 +610,13 @@ export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn outline" onClick={() => !d_loading && onClose()}>Cancelar</button>
+            <button
+              type="button"
+              className="btn outline"
+              onClick={() => !d_loading && onClose()}
+            >
+              Cancelar
+            </button>
             <button
               type="submit"
               className="btn primary"

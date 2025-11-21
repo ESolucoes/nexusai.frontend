@@ -59,11 +59,6 @@ function combineDateWithNow(dateStr: string, now: Date, addSeconds = 0) {
   return isoString;
 }
 
-async function ativarVigencia(usuarioId: string) {
-  try {
-    await api.patch(`/vigencias/${usuarioId}/switch`, { ativo: true });
-  } catch {}
-}
 
 export default function NovoMentoradoModal({ onClose, onSuccess }: Props) {
   const [mentores, setMentores] = useState<MentorUsuarioListItem[]>([]);

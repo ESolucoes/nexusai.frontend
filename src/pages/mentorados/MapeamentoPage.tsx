@@ -21,7 +21,6 @@ import {
 } from "../../lib/api";
 
 // Tabela de Vagas
-import VagasTable from "../../components/mentorados/VagasTable";
 
 // Função utilitária para extrair ID do JWT
 function pickUserIdFromJwt(jwt?: string | null): string | null {

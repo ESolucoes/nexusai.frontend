@@ -215,7 +215,7 @@ export default function PerfilMentoradoPage() {
             id: usuarioData.id,
             nome: usuarioData.nome ?? "Usuário",
             email: usuarioData.email ?? "",
-            telefone: usuarioData.telefone ?? "",
+            telefone: (usuarioData as any).telefone ?? "",
             avatarUrl: resolveImageUrl(usuarioData.avatarUrl) ?? null,
             mentoradoId: mentoradoIdParam,
             accountType: mentoradoData.tipo ?? null,
@@ -225,7 +225,7 @@ export default function PerfilMentoradoPage() {
           setUserForm({
             nome: usuarioData.nome ?? "",
             email: usuarioData.email ?? "",
-            telefone: usuarioData.telefone ?? "",
+            telefone: (usuarioData as any).telefone ?? "",
             novaSenha: "",
           });
 

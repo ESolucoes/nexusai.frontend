@@ -23,12 +23,13 @@ function pickUserIdFromJwt(jwt?: string | null): string | null {
 /** NOVA VERSÃO — usa VITE_PUBLIC_URL (domínio do FRONT) */
 function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
-
-  // Se já for absoluta, retorna
   if (/^https?:\/\//i.test(u)) return u;
 
-  const publicBase = (import.meta.env.VITE_PUBLIC_URL || "").replace(/\/+$/, "");
-  const path = String(u).replace(/^\/+/, "");
+  // Remove /uploads prefix se existir
+  let path = String(u).replace(/^\/+/, "");
+  path = path.replace(/^uploads\//, ""); // remove 'uploads/' do path
+
+  const publicBase = (import.meta.env.VITE_PUBLIC_URL || "https://processosniper.com.br").replace(/\/+$/, "");
 
   return `${publicBase}/${path}`;
 }

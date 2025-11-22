@@ -15,8 +15,17 @@ import HeadhuntersModal from "../../components/mentorados/HeadhuntersModal";
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt);
-  const candidates = [p?.sub, p?.id, p?.userId, p?.uid, p?.usuarioId, p?.user_id];
-  const found = candidates.find((v) => typeof v === "string" && v.trim().length > 0);
+  const candidates = [
+    p?.sub,
+    p?.id,
+    p?.userId,
+    p?.uid,
+    p?.usuarioId,
+    p?.user_id,
+  ];
+  const found = candidates.find(
+    (v) => typeof v === "string" && v.trim().length > 0
+  );
   return found ? String(found) : null;
 }
 
@@ -31,8 +40,7 @@ function resolveImageUrl(u?: string | null): string | null {
   let path = String(u).replace(/^\/+/, "");
   path = path.replace(/^uploads\//, "");
 
-  const publicBase =
-    (import.meta.env.VITE_PUBLIC_URL).replace(/\/+$/, "");
+  const publicBase = import.meta.env.VITE_PUBLIC_URL.replace(/\/+$/, "");
 
   return `${publicBase}/${path}`;
 }
@@ -84,7 +92,8 @@ export default function HomePage() {
           nome: data.nome ?? "Usuário",
           email: data.email ?? "",
           avatarUrl: resolveImageUrl(data.avatarUrl) ?? null,
-          accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
+          accountType:
+            (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
         });
       } catch (err) {
         console.error("[HomePage] GET /usuarios/{id} falhou:", err);
@@ -100,9 +109,10 @@ export default function HomePage() {
   }, []);
 
   const avatarFallback = "https://processosniper.com.br/images/avatar.png";
+
   const avatarSrc =
     usuario.avatarUrl && usuario.avatarUrl.trim().length > 0
-      ? usuario.avatarUrl
+      ? cacheBust(resolveImageUrl(usuario.avatarUrl) || avatarFallback)
       : avatarFallback;
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -115,14 +125,19 @@ export default function HomePage() {
     formData.append("file", file);
 
     try {
-      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData);
+      const { data } = await api.post(
+        `/usuarios/${usuario.id}/avatar`,
+        formData
+      );
 
       if (data?.url) {
-        const absolute = resolveImageUrl(String(data.url));
+        // Garante URL absoluta e cache-busting
+        const absolute = resolveImageUrl(String(data.url)) || avatarFallback;
         const busted = cacheBust(absolute);
+
         setUsuario((prev) => ({
           ...prev,
-          avatarUrl: busted || absolute || data.url,
+          avatarUrl: busted,
         }));
       }
     } catch (err) {

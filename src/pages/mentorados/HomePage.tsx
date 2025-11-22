@@ -15,37 +15,26 @@ import HeadhuntersModal from "../../components/mentorados/HeadhuntersModal";
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt);
-  const candidates = [
-    p?.sub,
-    p?.id,
-    p?.userId,
-    p?.uid,
-    p?.usuarioId,
-    p?.user_id,
-  ];
-  const found = candidates.find(
-    (v) => typeof v === "string" && v.trim().length > 0
-  );
+  const candidates = [p?.sub, p?.id, p?.userId, p?.uid, p?.usuarioId, p?.user_id];
+  const found = candidates.find((v) => typeof v === "string" && v.trim().length > 0);
   return found ? String(found) : null;
 }
 
-/** Corrigido: remove 'uploads/' para usar URL pública correta */
+/** NOVA VERSÃO — usa VITE_PUBLIC_URL (domínio do FRONT) */
 function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
-
-  // Se já for absoluta, retorna direto
   if (/^https?:\/\//i.test(u)) return u;
 
-  // Remove 'uploads/' se existir
+  // Remove /uploads prefix se existir
   let path = String(u).replace(/^\/+/, "");
-  path = path.replace(/^uploads\//, "");
+  path = path.replace(/^uploads\//, ""); // remove 'uploads/' do path
 
-  const publicBase = import.meta.env.VITE_PUBLIC_URL.replace(/\/+$/, "");
+  const publicBase = (import.meta.env.VITE_PUBLIC_URL || "https://processosniper.com.br").replace(/\/+$/, "");
 
   return `${publicBase}/${path}`;
 }
 
-/** Mantido: cache busting */
+/** Mantido igual — cache busting */
 function cacheBust(u?: string | null): string | null {
   if (!u) return u ?? null;
   const sep = u.includes("?") ? "&" : "?";
@@ -87,13 +76,13 @@ export default function HomePage() {
 
       try {
         const data = await getUsuarioById(userId);
+
         setUsuario({
           id: data.id,
           nome: data.nome ?? "Usuário",
           email: data.email ?? "",
           avatarUrl: resolveImageUrl(data.avatarUrl) ?? null,
-          accountType:
-            (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
+          accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
         });
       } catch (err) {
         console.error("[HomePage] GET /usuarios/{id} falhou:", err);
@@ -108,11 +97,10 @@ export default function HomePage() {
     })();
   }, []);
 
-  const avatarFallback = "https://processosniper.com.br/images/avatar.png";
-
+  const avatarFallback = "/images/avatar.png";
   const avatarSrc =
     usuario.avatarUrl && usuario.avatarUrl.trim().length > 0
-      ? cacheBust(resolveImageUrl(usuario.avatarUrl) || avatarFallback)
+      ? usuario.avatarUrl
       : avatarFallback;
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -125,19 +113,14 @@ export default function HomePage() {
     formData.append("file", file);
 
     try {
-      const { data } = await api.post(
-        `/usuarios/${usuario.id}/avatar`,
-        formData
-      );
+      const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData);
 
       if (data?.url) {
-        // Garante URL absoluta e cache-busting
-        const absolute = resolveImageUrl(String(data.url)) || avatarFallback;
+        const absolute = resolveImageUrl(String(data.url));
         const busted = cacheBust(absolute);
-
         setUsuario((prev) => ({
           ...prev,
-          avatarUrl: busted,
+          avatarUrl: busted || absolute || data.url,
         }));
       }
     } catch (err) {
@@ -177,7 +160,12 @@ export default function HomePage() {
               onClick={() => fileInputRef.current?.click()}
               onError={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
-                if (img.src !== avatarFallback) img.src = avatarFallback;
+                if (
+                  img.src !== window.location.origin + avatarFallback &&
+                  img.src !== avatarFallback
+                ) {
+                  img.src = avatarFallback;
+                }
               }}
             />
 
@@ -231,7 +219,7 @@ export default function HomePage() {
         </div>
 
         <img
-          src="https://processosniper.com.br/images/dashboard.png"
+          src="/images/dashboard.png"
           alt=""
           className="mentorados-center-image"
           draggable={false}

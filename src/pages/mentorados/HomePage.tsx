@@ -10,7 +10,7 @@ import MentoradoSsiTabela from "../../components/mentorados/MentoradoSsiTabela";
 import CronogramaSemanasTable from "../../components/mentorados/CronogramaSemanasTable";
 import RotinaSemanalFixa from "../../components/mentorados/RotinaSemanalFixa";
 
-/** Modal de Headhunters (arquivo separado) */
+/** Modal de Headhunters */
 import HeadhuntersModal from "../../components/mentorados/HeadhuntersModal";
 
 function pickUserIdFromJwt(jwt?: string | null): string | null {
@@ -20,17 +20,20 @@ function pickUserIdFromJwt(jwt?: string | null): string | null {
   return found ? String(found) : null;
 }
 
-/** Normaliza URL de imagem que pode vir relativa do backend. */
+/** NOVA VERSÃO — usa VITE_PUBLIC_URL (domínio do FRONT) */
 function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
+
+  // Se já for absoluta, retorna
   if (/^https?:\/\//i.test(u)) return u;
-  const base = (api?.defaults?.baseURL || "").replace(/\/+$/, "");
+
+  const publicBase = (import.meta.env.VITE_PUBLIC_URL || "").replace(/\/+$/, "");
   const path = String(u).replace(/^\/+/, "");
-  if (!base) return `/${path}`;
-  return `${base}/${path}`;
+
+  return `${publicBase}/${path}`;
 }
 
-/** Aplica cache-busting para refletir avatar atualizado na hora. */
+/** Mantido igual — cache busting */
 function cacheBust(u?: string | null): string | null {
   if (!u) return u ?? null;
   const sep = u.includes("?") ? "&" : "?";
@@ -53,7 +56,6 @@ export default function HomePage() {
   });
 
   const [headhModalOpen, setHeadhModalOpen] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -73,11 +75,12 @@ export default function HomePage() {
 
       try {
         const data = await getUsuarioById(userId);
+
         setUsuario({
           id: data.id,
           nome: data.nome ?? "Usuário",
           email: data.email ?? "",
-          avatarUrl: resolveImageUrl(data.avatarUrl) ?? null, // normaliza possível URL relativa
+          avatarUrl: resolveImageUrl(data.avatarUrl) ?? null,
           accountType: (data.mentorado?.tipo as "Executive" | "First Class") ?? null,
         });
       } catch (err) {
@@ -101,17 +104,23 @@ export default function HomePage() {
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!usuario.id) return;
+
     const file = e.target.files?.[0];
     if (!file) return;
+
     const formData = new FormData();
     formData.append("file", file);
+
     try {
       const { data } = await api.post(`/usuarios/${usuario.id}/avatar`, formData);
+
       if (data?.url) {
-        // normaliza + cache-busting para refletir imediatamente
         const absolute = resolveImageUrl(String(data.url));
         const busted = cacheBust(absolute);
-        setUsuario((prev) => ({ ...prev, avatarUrl: busted || absolute || data.url }));
+        setUsuario((prev) => ({
+          ...prev,
+          avatarUrl: busted || absolute || data.url,
+        }));
       }
     } catch (err) {
       console.error("[HomePage] upload avatar falhou:", err);
@@ -141,7 +150,6 @@ export default function HomePage() {
         <MentoradoHeader />
 
         <div className="mentorados-cards">
-          {/* CARD DO USUÁRIO - Usa a classe base mentorados-card, mas a responsividade é definida no CSS (grid-span-4) */}
           <div className="mentorados-card grid-span-4">
             <img
               src={avatarSrc}
@@ -159,6 +167,7 @@ export default function HomePage() {
                 }
               }}
             />
+
             <input
               type="file"
               ref={fileInputRef}
@@ -166,14 +175,15 @@ export default function HomePage() {
               accept="image/*"
               onChange={handleAvatarChange}
             />
+
             <div className="mentorados-user-info">
               <h2>{usuario.nome}</h2>
               <p>{usuario.email}</p>
             </div>
+
             <span className={badgeClass}>{usuario.accountType ?? ""}</span>
           </div>
 
-          {/* BOTÃO PARA ABRIR MODAL DE HEADHUNTERS - Define a largura no grid (grid-span-4) */}
           <button
             type="button"
             onClick={() => setHeadhModalOpen(true)}
@@ -186,7 +196,7 @@ export default function HomePage() {
               background: "#fff",
               cursor: "pointer",
               marginBottom: 12,
-              color: "#0f172a", // Corrigido para ser visível
+              color: "#0f172a",
               fontWeight: 800,
             }}
             aria-haspopup="dialog"
@@ -195,12 +205,10 @@ export default function HomePage() {
             Headhunters
           </button>
 
-          {/* === Tabela única do SSI (12 semanas) - Ocupa a linha inteira (grid-span-12) === */}
           <div className="grid-span-12">
             <MentoradoSsiTabela />
           </div>
 
-          {/* === Cronograma (8 semanas) + Rotina Fixa - Dividem a largura (grid-span-6) === */}
           <div className="grid-span-6">
             <CronogramaSemanasTable />
           </div>
@@ -217,7 +225,6 @@ export default function HomePage() {
         />
       </div>
 
-      {/* MODAL DE HEADHUNTERS */}
       <HeadhuntersModal
         open={headhModalOpen}
         onClose={() => setHeadhModalOpen(false)}

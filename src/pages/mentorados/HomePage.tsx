@@ -20,20 +20,24 @@ function pickUserIdFromJwt(jwt?: string | null): string | null {
   return found ? String(found) : null;
 }
 
-/** NOVA VERSÃO — usa VITE_PUBLIC_URL (domínio do FRONT) */
+/** Corrigido: remove 'uploads/' para usar URL pública correta */
 function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
+
+  // Se já for absoluta, retorna direto
   if (/^https?:\/\//i.test(u)) return u;
 
+  // Remove 'uploads/' se existir
   let path = String(u).replace(/^\/+/, "");
-  path = path.replace(/^uploads\//, ""); // remove 'uploads/' do backend
+  path = path.replace(/^uploads\//, "");
 
-  const publicBase = (import.meta.env.VITE_PUBLIC_URL || "https://processosniper.com.br").replace(/\/+$/, "");
+  const publicBase =
+    (import.meta.env.VITE_PUBLIC_URL).replace(/\/+$/, "");
 
   return `${publicBase}/${path}`;
 }
 
-/** Mantido igual — cache busting */
+/** Mantido: cache busting */
 function cacheBust(u?: string | null): string | null {
   if (!u) return u ?? null;
   const sep = u.includes("?") ? "&" : "?";
@@ -75,7 +79,6 @@ export default function HomePage() {
 
       try {
         const data = await getUsuarioById(userId);
-
         setUsuario({
           id: data.id,
           nome: data.nome ?? "Usuário",
@@ -96,7 +99,7 @@ export default function HomePage() {
     })();
   }, []);
 
-  const avatarFallback = "/images/avatar.png";
+  const avatarFallback = "https://processosniper.com.br/images/avatar.png";
   const avatarSrc =
     usuario.avatarUrl && usuario.avatarUrl.trim().length > 0
       ? usuario.avatarUrl
@@ -159,12 +162,7 @@ export default function HomePage() {
               onClick={() => fileInputRef.current?.click()}
               onError={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
-                if (
-                  img.src !== window.location.origin + avatarFallback &&
-                  img.src !== avatarFallback
-                ) {
-                  img.src = avatarFallback;
-                }
+                if (img.src !== avatarFallback) img.src = avatarFallback;
               }}
             />
 
@@ -218,7 +216,7 @@ export default function HomePage() {
         </div>
 
         <img
-          src="/images/dashboard.png"
+          src="https://processosniper.com.br/images/dashboard.png"
           alt=""
           className="mentorados-center-image"
           draggable={false}

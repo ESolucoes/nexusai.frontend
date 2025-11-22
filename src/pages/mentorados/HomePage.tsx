@@ -25,9 +25,8 @@ function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
   if (/^https?:\/\//i.test(u)) return u;
 
-  // Remove /uploads prefix se existir
   let path = String(u).replace(/^\/+/, "");
-  path = path.replace(/^uploads\//, ""); // remove 'uploads/' do path
+  path = path.replace(/^uploads\//, ""); // remove 'uploads/' do backend
 
   const publicBase = (import.meta.env.VITE_PUBLIC_URL || "https://processosniper.com.br").replace(/\/+$/, "");
 

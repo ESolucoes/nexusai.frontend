@@ -70,7 +70,7 @@ const ORIGIN =
 export const baseURL = (() => {
   // 🔥 CORREÇÃO CRÍTICA: Em produção, usar URL absoluta do backend
   if (import.meta.env.PROD) {
-    return API_URL || window.location.origin;
+    return API_URL || "https://api.processosniper.com.br";
   }
   
   // Em desenvolvimento, manter lógica anterior
@@ -97,11 +97,18 @@ function isAbsoluteUrl(u?: string | null) {
 export function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
   if (isAbsoluteUrl(u)) return u;
-  const trimmed = String(u).replace(/^\/+/, "");
   
-  // 🔥 CORREÇÃO: Garantir que URLs relativas sejam resolvidas corretamente
+  const trimmed = String(u).replace(/^\/+/, '');
+  
+  // 🔥 CORREÇÃO CRÍTICA: Garantir que URLs relativas sejam resolvidas corretamente
+  // Se começar com 'uploads/', usar baseURL do backend
   if (trimmed.startsWith('uploads/')) {
     return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
+  }
+  
+  // Se for um caminho absoluto relativo (começa com /)
+  if (u.startsWith('/')) {
+    return `${baseURL}${u}`;
   }
   
   // Para outros caminhos relativos
@@ -203,6 +210,12 @@ export type MentoradoResponse = {
 
 export async function getUsuarioById(id: string) {
   const { data } = await api.get<UsuarioResponse>(`/usuarios/${id}`);
+  
+  // 🔥 CORREÇÃO: Resolver URL do avatar
+  if (data.avatarUrl) {
+    data.avatarUrl = resolveImageUrl(data.avatarUrl);
+  }
+  
   return data;
 }
 
@@ -210,6 +223,12 @@ export async function getMentoradoByUsuarioId(usuarioId: string) {
   const { data } = await api.get<MentoradoResponse>(
     `/mentorados/por-usuario/${usuarioId}`
   );
+  
+  // 🔥 CORREÇÃO: Resolver URL do currículo
+  if (data.curriculo?.url) {
+    data.curriculo.url = resolveImageUrl(data.curriculo.url);
+  }
+  
   return data;
 }
 
@@ -257,12 +276,11 @@ export async function uploadUsuarioAvatar(usuarioId: string, file: File) {
   
   // 🔥 CORREÇÃO: Garantir que a URL seja resolvida corretamente em produção
   const resolvedUrl = resolveImageUrl(data?.url || null);
-  const bustedUrl = cacheBust(resolvedUrl || data?.url || null);
   
   return {
     ...data,
     resolvedUrl,
-    bustedUrl
+    bustedUrl: cacheBust(resolvedUrl)
   };
 }
 
@@ -297,15 +315,13 @@ export async function uploadCurriculo(
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   
   const form = new FormData();
-  // O campo 'files' está correto para a rota de múltiplos
   form.append("files", file); 
   
   const { data } = await postForm(
-    `/mentorados/${mentoradoId}/curriculos`, // Rota que usa FilesInterceptor('files')
+    `/mentorados/${mentoradoId}/curriculos`,
     form
   );
   
-  // O retorno é o mesmo do uploadCurriculos: um array de arquivos.
   const info = (data as { arquivos: MentoradoCurriculo[] })?.arquivos?.[0];
   
   if (!info) throw new Error("Upload concluído, mas informações do arquivo ausentes na resposta da API.");
@@ -338,13 +354,13 @@ export async function uploadCurriculos(mentoradoId: string, files: File[]) {
     form
   );
   
-  // 🔥 CORREÇÃO: Resolver URLs para produção
   const response = data as {
     sucesso: boolean;
     total: number;
     arquivos: MentoradoCurriculo[];
   };
   
+  // 🔥 CORREÇÃO: Resolver URLs para produção
   response.arquivos = response.arquivos.map(arquivo => ({
     ...arquivo,
     url: resolveImageUrl(arquivo.url) || arquivo.url
@@ -367,15 +383,12 @@ export async function getLatestCurriculoInfo(
     );
     
     // 🔥 CORREÇÃO APLICADA AQUI!
-    // O backend retorna '/mentorado/...', a função resolveImageUrl
-    // adiciona 'http://api-url.com' na frente.
     if (data && data.url) {
-        data.url = resolveImageUrl(data.url) || data.url;
+      data.url = resolveImageUrl(data.url) || data.url;
     }
     
     return data;
   } catch (error: any) {
-    // Retorna null se for 404, indicando que não há currículo. Lança outros erros.
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       return null;
     }
@@ -457,7 +470,7 @@ export async function uploadMentoradoAudio(
   blob: Blob | File
 ) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
-  const form = new FormData(); // Garante nome/ext compatível
+  const form = new FormData();
 
   const lower = (blob.type || "").toLowerCase();
   let ext = ".wav";
@@ -551,7 +564,6 @@ export async function createMyVagaLink(payload: CreateVagaLinkPayload) {
   return data;
 }
 
-// 🆕 FUNÇÃO DE REMOÇÃO ADICIONADA AQUI
 export async function removeMyVagaLink(id: string) {
   const { data } = await api.delete<{ ok: boolean }>(`/vagas-links/${id}`);
   return data;
@@ -563,9 +575,9 @@ export async function removeMyVagaLink(id: string) {
 
 export type CronogramaSemanaItem = {
   id: string;
-  semana: string; // "Semana 1", "Semana 2 a 4", ...
-  meta: string; // título da meta
-  tarefa: string; // descrição da tarefa
+  semana: string;
+  meta: string;
+  tarefa: string;
   ordem: number;
   concluido: boolean;
 };
@@ -583,14 +595,13 @@ export type CronogramaSemanasGrouped = Record<
 export type CronogramaRotinaItem = {
   id: string;
   usuarioId?: string | null;
-  grupo: string; // "FIXA"
-  dia: string; // "Segunda", ...
-  titulo: string; // "Aplicar para vagas + revisar indicadores"
+  grupo: string;
+  dia: string;
+  titulo: string;
   ordem: number;
   ativo: boolean;
 };
 
-/** Garante que o seed (template) exista */
 export async function seedCronograma(usuarioId?: string) {
   const { data } = await api.post<{ ok: boolean; seeded: boolean }>(
     `/mentorado-cronograma/seed`,
@@ -599,7 +610,6 @@ export async function seedCronograma(usuarioId?: string) {
   return data;
 }
 
-/** GET /mentorado-cronograma/semanas (agrupado por semana) */
 export async function listCronogramaSemanas(usuarioId?: string) {
   const { data } = await api.get<CronogramaSemanasGrouped>(
     `/mentorado-cronograma/semanas`,
@@ -610,7 +620,6 @@ export async function listCronogramaSemanas(usuarioId?: string) {
   return data;
 }
 
-/** PATCH /mentorado-cronograma/semanas/:id */
 export async function updateCronogramaSemana(
   id: string,
   dto: Partial<Pick<CronogramaSemanaItem, "concluido" | "tarefa" | "ordem">>
@@ -622,7 +631,6 @@ export async function updateCronogramaSemana(
   return data;
 }
 
-/** GET /mentorado-cronograma/rotina */
 export async function listCronogramaRotina(usuarioId?: string) {
   const { data } = await api.get<CronogramaRotinaItem[]>(
     `/mentorado-cronograma/rotina`,
@@ -631,7 +639,6 @@ export async function listCronogramaRotina(usuarioId?: string) {
   return data;
 }
 
-/** PUT /mentorado-cronograma/rotina (regrava FIXA) */
 export async function upsertCronogramaRotina(
   itens: Array<
     Pick<CronogramaRotinaItem, "dia" | "titulo" | "ordem" | "ativo">
@@ -648,14 +655,6 @@ export async function upsertCronogramaRotina(
 /* ====================================================================== */
 /* ======================= MENTORADO-SSI (NOVO) ========================= */
 /* ====================================================================== */
-/**
- * ATENÇÃO:
- * - Este módulo NÃO persiste nada.
- * - O backend expõe endpoints em /mentorado-ssi para:
- *   - GET  /mentorado-ssi/definicoes        -> textos e metas
- *   - GET  /mentorado-ssi/tabela-vazia      -> esqueleto 12 semanas (ROTA CORRIGIDA ABAIXO)
- *   - POST /mentorado-ssi/classificar       -> classifica [OTIMO|BOM|RUIM]
- */
 
 export type MssIndicador =
   | "SSI_SETOR"
@@ -703,7 +702,7 @@ export type MssTabelaVaziaItem = {
   indicador: MssIndicador;
   nome: string;
   meta: string;
-  semanas: (number | null)[]; // 12 posições
+  semanas: (number | null)[];
   textos: {
     positivo: string[];
     negativo: string[];
@@ -713,15 +712,15 @@ export type MssTabelaVaziaItem = {
 
 export type MssClassificarInItem = {
   indicador: MssIndicador;
-  semanas: number[]; // até 12 valores
+  semanas: number[];
 };
 
 export type MssClassificarOutItem = {
   indicador: MssIndicador;
   nome: string;
   meta: string;
-  semanas: number[]; // ecoa os valores enviados (limit 12)
-  statusSemanal: MssStatus[]; // classificação para cada semana
+  semanas: number[];
+  statusSemanal: MssStatus[];
   textos: {
     positivo: string[];
     negativo: string[];
@@ -729,20 +728,16 @@ export type MssClassificarOutItem = {
   };
 };
 
-/** GET /mentorado-ssi/definicoes */
 export async function getMssDefinicoes() {
   const { data } = await api.get<MssDefinicao[]>(`/mentorado-ssi/definicoes`);
   return data;
 }
 
-/** GET /mentorado-ssi/tabela (12 semanas com nulls) */
 export async function getMssTabelaVazia() {
-  // CORREÇÃO APLICADA: Rota alterada de /mentorado-ssi/tabela-vazia para /mentorado-ssi/tabela
   const { data } = await api.get<MssTabelaVaziaItem[]>(`/mentorado-ssi/tabela`);
   return data;
 }
 
-/** POST /mentorado-ssi/classificar */
 export async function postMssClassificar(itens: MssClassificarInItem[]) {
   const { data } = await api.post<MssClassificarOutItem[]>(
     `/mentorado-ssi/classificar`,
@@ -772,7 +767,6 @@ export async function deleteUsuario(id: string) {
 }
 
 /* ============================ Vigências ============================ */
-// 🔥 CORREÇÃO: Adicionar export antes do tipo VigenciaDto
 export type VigenciaDto = {
   id: string;
   usuarioId: string;
@@ -863,9 +857,6 @@ export type AutomacaoResponse = {
   message: string;
 };
 
-/**
- * GET /mentorados-candidatura/meu-mentorado - Obter mentorado do usuário logado
- */
 export async function getMeuMentorado() {
   const { data } = await api.get<{
     id: string;
@@ -877,14 +868,11 @@ export async function getMeuMentorado() {
   return data;
 }
 
-/**
- * POST /mentorados-candidatura/iniciar-automacao
- */
 export async function iniciarAutomacaoLinkedIn(payload: IniciarAutomacaoPayload): Promise<AutomacaoResponse> {
   const { data } = await api.post<AutomacaoResponse>(
     '/mentorados-candidatura/iniciar-automacao',
     payload,
-    { timeout: 300000 } // 5 minutos específico para automação
+    { timeout: 300000 }
   );
   return data;
 }
@@ -904,7 +892,6 @@ export async function getMentorById(mentorId: string) {
   return data;
 }
 
-/* ============================ Helpers JWT (já usados nas páginas) ============================ */
 export function pickUserIdFromJwt(jwt?: string | null): string | null {
   const p = decodeJwt<any>(jwt);
   const candidates = [
@@ -921,43 +908,26 @@ export function pickUserIdFromJwt(jwt?: string | null): string | null {
   return found ? String(found) : null;
 }
 
-// ============================ NOVAS FUNÇÕES ADICIONADAS ============================
-
-/**
- * Busca um mentorado pelo ID
- */
 export async function getMentoradoById(mentoradoId: string) {
   const { data } = await api.get(`/mentorados/${mentoradoId}`);
   return data;
 }
 
-/**
- * Cria um novo mentorado
- */
 export async function createMentorado(dto: any) {
   const { data } = await api.post(`/mentorados`, dto);
   return data;
 }
 
-/**
- * Lista todos os mentorados (apenas para mentores/admin)
- */
 export async function listMentorados() {
   const { data } = await api.get(`/mentorados`);
   return data;
 }
 
-/**
- * Deleta um mentorado (apenas para mentores/admin)
- */
 export async function deleteMentorado(id: string) {
   const { data } = await api.delete(`/mentorados/${id}`);
   return data;
 }
 
-/**
- * Upload de avatar para usuário
- */
 export async function uploadAvatar(usuarioId: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);
@@ -966,48 +936,63 @@ export async function uploadAvatar(usuarioId: string, file: File) {
       'Content-Type': 'multipart/form-data',
     },
   });
+  
+  // 🔥 CORREÇÃO: Resolver URL
+  if (data.url) {
+    data.url = resolveImageUrl(data.url);
+  }
+  
   return data;
 }
 
-/**
- * Busca informações completas do usuário com mentorado
- */
 export async function getUsuarioCompleto(id: string) {
   const { data } = await api.get(`/usuarios/${id}`);
+  
+  // 🔥 CORREÇÃO: Resolver URL do avatar
+  if (data.avatarUrl) {
+    data.avatarUrl = resolveImageUrl(data.avatarUrl);
+  }
+  
   return data;
 }
 
-/**
- * Lista mentores paginados
- */
 export async function listMentoresPaginados(page: number = 1, limit: number = 20, filters?: any) {
   const { data } = await api.get(`/usuarios/mentores`, {
     params: { page, limit, ...filters }
   });
+  
+  // 🔥 CORREÇÃO: Resolver URLs dos avatares
+  if (data.itens) {
+    data.itens = data.itens.map((item: any) => ({
+      ...item,
+      avatarUrl: resolveImageUrl(item.avatarUrl)
+    }));
+  }
+  
   return data;
 }
 
-/**
- * Lista mentorados paginados
- */
 export async function listMentoradosPaginados(page: number = 1, limit: number = 20, filters?: any) {
   const { data } = await api.get(`/usuarios/mentorados`, {
     params: { page, limit, ...filters }
   });
+  
+  // 🔥 CORREÇÃO: Resolver URLs dos avatares
+  if (data.itens) {
+    data.itens = data.itens.map((item: any) => ({
+      ...item,
+      avatarUrl: resolveImageUrl(item.avatarUrl)
+    }));
+  }
+  
   return data;
 }
 
-/**
- * Conta total de mentores
- */
 export async function countMentores() {
   const { data } = await api.get(`/usuarios/mentores/count`);
   return data;
 }
 
-/**
- * Conta total de mentorados
- */
 export async function countMentorados() {
   const { data } = await api.get(`/usuarios/mentorados/count`);
   return data;

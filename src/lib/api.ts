@@ -94,24 +94,20 @@ function isAbsoluteUrl(u?: string | null) {
 }
 
 /** Normaliza URL de imagem/arquivo (se vier relativa do backend, prefixa com baseURL) */
+/** Normaliza URL de imagem/arquivo */
 export function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
+  
+  // 🔥 CORREÇÃO: Se a URL aponta para frontend, converter para backend
+  if (u.includes('processosniper.com.br/uploads/')) {
+    return u.replace('processosniper.com.br/', 'api.processosniper.com.br/');
+  }
+  
+  // Para outras URLs absolutas, retornar como está
   if (isAbsoluteUrl(u)) return u;
-
-  const trimmed = String(u).replace(/^\/+/, "");
-
-  // 🔥 CORREÇÃO CRÍTICA: Garantir que URLs relativas sejam resolvidas corretamente
-  // Se começar com 'uploads/', usar baseURL do backend
-  if (trimmed.startsWith("uploads/")) {
-    return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
-  }
-
-  // Se for um caminho absoluto relativo (começa com /)
-  if (u.startsWith("/")) {
-    return `${baseURL}${u}`;
-  }
-
-  // Para outros caminhos relativos
+  
+  // Para URLs relativas, usar baseURL
+  const trimmed = String(u).replace(/^\/+/, '');
   return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
 }
 

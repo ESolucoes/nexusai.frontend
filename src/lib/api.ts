@@ -210,18 +210,21 @@ export type MentoradoResponse = {
 
 export async function getUsuarioById(id: string) {
   const { data } = await api.get<UsuarioResponse>(`/usuarios/${id}`);
-
-  // 🔥 CORREÇÃO: Buscar informações do avatar separadamente
+  
+  // 🔥 CORREÇÃO: Buscar informações do avatar com token
   try {
     const avatarResponse = await api.get(`/usuarios/${id}/avatar`);
     if (avatarResponse.data?.avatarUrl) {
       data.avatarUrl = resolveImageUrl(avatarResponse.data.avatarUrl);
     }
   } catch (error) {
-    // Se não tiver avatar, mantém o avatarUrl original ou null
-    console.log("Usuário sem avatar");
+    console.log('Usuário sem avatar ou erro de autenticação');
+    // Se der erro 401, tenta buscar a URL diretamente do usuário
+    if (data.avatarUrl) {
+      data.avatarUrl = resolveImageUrl(data.avatarUrl);
+    }
   }
-
+  
   return data;
 }
 

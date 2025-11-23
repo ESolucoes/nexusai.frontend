@@ -93,15 +93,25 @@ function isAbsoluteUrl(u?: string | null) {
   return !!u && /^(?:https?:|data:|blob:)/i.test(u);
 }
 
-/** Normaliza URL de imagem/arquivo */
+/** Normaliza URL de imagem/arquivo (se vier relativa do backend, prefixa com baseURL) */
 export function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
-  
-  // Se já é URL absoluta, retorna como está
   if (isAbsoluteUrl(u)) return u;
-  
-  // Para URLs relativas, usar baseURL
-  const trimmed = String(u).replace(/^\/+/, '');
+
+  const trimmed = String(u).replace(/^\/+/, "");
+
+  // 🔥 CORREÇÃO CRÍTICA: Garantir que URLs relativas sejam resolvidas corretamente
+  // Se começar com 'uploads/', usar baseURL do backend
+  if (trimmed.startsWith("uploads/")) {
+    return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
+  }
+
+  // Se for um caminho absoluto relativo (começa com /)
+  if (u.startsWith("/")) {
+    return `${baseURL}${u}`;
+  }
+
+  // Para outros caminhos relativos
   return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
 }
 
@@ -201,9 +211,18 @@ export type MentoradoResponse = {
 export async function getUsuarioById(id: string) {
   const { data } = await api.get<UsuarioResponse>(`/usuarios/${id}`);
   
-  // Se já tem avatarUrl, resolver normalmente
-  if (data.avatarUrl) {
-    data.avatarUrl = resolveImageUrl(data.avatarUrl);
+  // 🔥 CORREÇÃO: Buscar informações do avatar com token
+  try {
+    const avatarResponse = await api.get(`/usuarios/${id}/avatar`);
+    if (avatarResponse.data?.avatarUrl) {
+      data.avatarUrl = resolveImageUrl(avatarResponse.data.avatarUrl);
+    }
+  } catch (error) {
+    console.log('Usuário sem avatar ou erro de autenticação');
+    // Se der erro 401, tenta buscar a URL diretamente do usuário
+    if (data.avatarUrl) {
+      data.avatarUrl = resolveImageUrl(data.avatarUrl);
+    }
   }
   
   return data;

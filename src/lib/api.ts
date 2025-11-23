@@ -72,7 +72,7 @@ export const baseURL = (() => {
   if (import.meta.env.PROD) {
     return API_URL || "https://api.processosniper.com.br";
   }
-  
+
   // Em desenvolvimento, manter lógica anterior
   const root = API_URL || ORIGIN.replace(/\/+$/, "");
   const base = API_BASE ? `/${API_BASE}` : "";
@@ -97,20 +97,20 @@ function isAbsoluteUrl(u?: string | null) {
 export function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
   if (isAbsoluteUrl(u)) return u;
-  
-  const trimmed = String(u).replace(/^\/+/, '');
-  
+
+  const trimmed = String(u).replace(/^\/+/, "");
+
   // 🔥 CORREÇÃO CRÍTICA: Garantir que URLs relativas sejam resolvidas corretamente
   // Se começar com 'uploads/', usar baseURL do backend
-  if (trimmed.startsWith('uploads/')) {
+  if (trimmed.startsWith("uploads/")) {
     return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
   }
-  
+
   // Se for um caminho absoluto relativo (começa com /)
-  if (u.startsWith('/')) {
+  if (u.startsWith("/")) {
     return `${baseURL}${u}`;
   }
-  
+
   // Para outros caminhos relativos
   return `${baseURL}/${trimmed}`.replace(/\/{2,}/g, "/").replace(":/", "://");
 }
@@ -210,12 +210,18 @@ export type MentoradoResponse = {
 
 export async function getUsuarioById(id: string) {
   const { data } = await api.get<UsuarioResponse>(`/usuarios/${id}`);
-  
-  // 🔥 CORREÇÃO: Resolver URL do avatar
-  if (data.avatarUrl) {
-    data.avatarUrl = resolveImageUrl(data.avatarUrl);
+
+  // 🔥 CORREÇÃO: Buscar informações do avatar separadamente
+  try {
+    const avatarResponse = await api.get(`/usuarios/${id}/avatar`);
+    if (avatarResponse.data?.avatarUrl) {
+      data.avatarUrl = resolveImageUrl(avatarResponse.data.avatarUrl);
+    }
+  } catch (error) {
+    // Se não tiver avatar, mantém o avatarUrl original ou null
+    console.log("Usuário sem avatar");
   }
-  
+
   return data;
 }
 
@@ -223,12 +229,12 @@ export async function getMentoradoByUsuarioId(usuarioId: string) {
   const { data } = await api.get<MentoradoResponse>(
     `/mentorados/por-usuario/${usuarioId}`
   );
-  
+
   // 🔥 CORREÇÃO: Resolver URL do currículo
   if (data.curriculo?.url) {
     data.curriculo.url = resolveImageUrl(data.curriculo.url);
   }
-  
+
   return data;
 }
 
@@ -273,14 +279,14 @@ export async function uploadUsuarioAvatar(usuarioId: string, file: File) {
     `/usuarios/${usuarioId}/avatar`,
     form
   );
-  
+
   // 🔥 CORREÇÃO: Garantir que a URL seja resolvida corretamente em produção
   const resolvedUrl = resolveImageUrl(data?.url || null);
-  
+
   return {
     ...data,
     resolvedUrl,
-    bustedUrl: cacheBust(resolvedUrl)
+    bustedUrl: cacheBust(resolvedUrl),
   };
 }
 
@@ -313,22 +319,25 @@ export async function uploadCurriculo(
   file: File
 ): Promise<CurriculoUploadResult> {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
-  
+
   const form = new FormData();
-  form.append("files", file); 
-  
+  form.append("files", file);
+
   const { data } = await postForm(
     `/mentorados/${mentoradoId}/curriculos`,
     form
   );
-  
+
   const info = (data as { arquivos: MentoradoCurriculo[] })?.arquivos?.[0];
-  
-  if (!info) throw new Error("Upload concluído, mas informações do arquivo ausentes na resposta da API.");
-  
+
+  if (!info)
+    throw new Error(
+      "Upload concluído, mas informações do arquivo ausentes na resposta da API."
+    );
+
   // 🔥 CORREÇÃO: Resolver URL para produção
   const resolvedUrl = resolveImageUrl(info.url ?? null);
-  
+
   return {
     sucesso: true,
     storageKey: info.filename ?? "",
@@ -345,27 +354,27 @@ export async function uploadCurriculo(
 export async function uploadCurriculos(mentoradoId: string, files: File[]) {
   if (!mentoradoId) throw new Error("mentoradoId obrigatório");
   if (!files?.length) throw new Error("Nenhum arquivo selecionado");
-  
+
   const form = new FormData();
   for (const f of files) form.append("files", f);
-  
+
   const { data } = await postForm(
     `/mentorados/${mentoradoId}/curriculos`,
     form
   );
-  
+
   const response = data as {
     sucesso: boolean;
     total: number;
     arquivos: MentoradoCurriculo[];
   };
-  
+
   // 🔥 CORREÇÃO: Resolver URLs para produção
-  response.arquivos = response.arquivos.map(arquivo => ({
+  response.arquivos = response.arquivos.map((arquivo) => ({
     ...arquivo,
-    url: resolveImageUrl(arquivo.url) || arquivo.url
+    url: resolveImageUrl(arquivo.url) || arquivo.url,
   }));
-  
+
   return response;
 }
 
@@ -381,12 +390,12 @@ export async function getLatestCurriculoInfo(
     const { data } = await api.get<MentoradoCurriculo>(
       `/mentorados/${mentoradoId}/curriculo/latest-info`
     );
-    
+
     // 🔥 CORREÇÃO APLICADA AQUI!
     if (data && data.url) {
       data.url = resolveImageUrl(data.url) || data.url;
     }
-    
+
     return data;
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -416,13 +425,13 @@ export async function listMentoradoCurriculos(mentoradoId: string) {
     total: number;
     arquivos: MentoradoCurriculo[];
   }>(`/mentorados/${mentoradoId}/curriculo/list`);
-  
+
   // 🔥 CORREÇÃO: Resolver URLs para produção
-  data.arquivos = data.arquivos.map(arquivo => ({
+  data.arquivos = data.arquivos.map((arquivo) => ({
     ...arquivo,
-    url: resolveImageUrl(arquivo.url) || arquivo.url
+    url: resolveImageUrl(arquivo.url) || arquivo.url,
   }));
-  
+
   return data;
 }
 
@@ -441,9 +450,10 @@ export async function downloadCurriculoByName(
     )}`
   );
   const { data, headers } = await api.get(url, { responseType: "blob" });
-  
+
   const name = ((): string => {
-    const cd = headers?.["content-disposition"] || headers?.["Content-Disposition"];
+    const cd =
+      headers?.["content-disposition"] || headers?.["Content-Disposition"];
     if (typeof cd === "string") {
       const star = /filename\*=(?:UTF-8''|)([^;]+)/i.exec(cd);
       if (star?.[1]) return decodeURIComponent(star[1].replace(/^"+|"+$/g, ""));
@@ -452,7 +462,7 @@ export async function downloadCurriculoByName(
     }
     return filename;
   })();
-  
+
   triggerBrowserDownload(data, name);
 }
 
@@ -484,12 +494,12 @@ export async function uploadMentoradoAudio(
     `/mentorados/${mentoradoId}/audios`,
     form
   );
-  
+
   // 🔥 CORREÇÃO: Resolver URL para produção
   if (data.audio && data.audio.url) {
     data.audio.url = resolveImageUrl(data.audio.url) || data.audio.url;
   }
-  
+
   return data;
 }
 
@@ -499,13 +509,13 @@ export async function listMentoradoAudios(mentoradoId: string) {
     total: number;
     audios: MentoradoAudio[];
   }>(`/mentorados/${mentoradoId}/audios`);
-  
+
   // 🔥 CORREÇÃO: Resolver URLs para produção
-  data.audios = data.audios.map(audio => ({
+  data.audios = data.audios.map((audio) => ({
     ...audio,
-    url: resolveImageUrl(audio.url) || audio.url
+    url: resolveImageUrl(audio.url) || audio.url,
   }));
-  
+
   return data;
 }
 
@@ -864,13 +874,15 @@ export async function getMeuMentorado() {
     pretensaoClt: number;
     pretensaoPj: number;
     linkedin: string;
-  }>('/mentorados-candidatura/meu-mentorado');
+  }>("/mentorados-candidatura/meu-mentorado");
   return data;
 }
 
-export async function iniciarAutomacaoLinkedIn(payload: IniciarAutomacaoPayload): Promise<AutomacaoResponse> {
+export async function iniciarAutomacaoLinkedIn(
+  payload: IniciarAutomacaoPayload
+): Promise<AutomacaoResponse> {
   const { data } = await api.post<AutomacaoResponse>(
-    '/mentorados-candidatura/iniciar-automacao',
+    "/mentorados-candidatura/iniciar-automacao",
     payload,
     { timeout: 300000 }
   );
@@ -879,10 +891,13 @@ export async function iniciarAutomacaoLinkedIn(payload: IniciarAutomacaoPayload)
 
 /* ============================ Mentor: Update Tipo ============================ */
 export type PutMentorTipoDto = {
-  tipo: 'admin' | 'normal';
+  tipo: "admin" | "normal";
 };
 
-export async function updateMentorTipo(mentorId: string, dto: PutMentorTipoDto) {
+export async function updateMentorTipo(
+  mentorId: string,
+  dto: PutMentorTipoDto
+) {
   const { data } = await api.put(`/mentores/${mentorId}`, dto);
   return data;
 }
@@ -930,61 +945,69 @@ export async function deleteMentorado(id: string) {
 
 export async function uploadAvatar(usuarioId: string, file: File) {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
   const { data } = await api.post(`/usuarios/${usuarioId}/avatar`, formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      "Content-Type": "multipart/form-data",
     },
   });
-  
+
   // 🔥 CORREÇÃO: Resolver URL
   if (data.url) {
     data.url = resolveImageUrl(data.url);
   }
-  
+
   return data;
 }
 
 export async function getUsuarioCompleto(id: string) {
   const { data } = await api.get(`/usuarios/${id}`);
-  
+
   // 🔥 CORREÇÃO: Resolver URL do avatar
   if (data.avatarUrl) {
     data.avatarUrl = resolveImageUrl(data.avatarUrl);
   }
-  
+
   return data;
 }
 
-export async function listMentoresPaginados(page: number = 1, limit: number = 20, filters?: any) {
+export async function listMentoresPaginados(
+  page: number = 1,
+  limit: number = 20,
+  filters?: any
+) {
   const { data } = await api.get(`/usuarios/mentores`, {
-    params: { page, limit, ...filters }
+    params: { page, limit, ...filters },
   });
-  
+
   // 🔥 CORREÇÃO: Resolver URLs dos avatares
   if (data.itens) {
     data.itens = data.itens.map((item: any) => ({
       ...item,
-      avatarUrl: resolveImageUrl(item.avatarUrl)
+      avatarUrl: resolveImageUrl(item.avatarUrl),
     }));
   }
-  
+
   return data;
 }
 
-export async function listMentoradosPaginados(page: number = 1, limit: number = 20, filters?: any) {
+export async function listMentoradosPaginados(
+  page: number = 1,
+  limit: number = 20,
+  filters?: any
+) {
   const { data } = await api.get(`/usuarios/mentorados`, {
-    params: { page, limit, ...filters }
+    params: { page, limit, ...filters },
   });
-  
+
   // 🔥 CORREÇÃO: Resolver URLs dos avatares
   if (data.itens) {
     data.itens = data.itens.map((item: any) => ({
       ...item,
-      avatarUrl: resolveImageUrl(item.avatarUrl)
+      avatarUrl: resolveImageUrl(item.avatarUrl),
     }));
   }
-  
+
   return data;
 }
 

@@ -93,17 +93,11 @@ function isAbsoluteUrl(u?: string | null) {
   return !!u && /^(?:https?:|data:|blob:)/i.test(u);
 }
 
-/** Normaliza URL de imagem/arquivo (se vier relativa do backend, prefixa com baseURL) */
 /** Normaliza URL de imagem/arquivo */
 export function resolveImageUrl(u?: string | null): string | null {
   if (!u) return null;
   
-  // 🔥 CORREÇÃO: Se a URL aponta para frontend, converter para backend
-  if (u.includes('processosniper.com.br/uploads/')) {
-    return u.replace('processosniper.com.br/', 'api.processosniper.com.br/');
-  }
-  
-  // Para outras URLs absolutas, retornar como está
+  // Se já é URL absoluta, retorna como está
   if (isAbsoluteUrl(u)) return u;
   
   // Para URLs relativas, usar baseURL
@@ -207,29 +201,9 @@ export type MentoradoResponse = {
 export async function getUsuarioById(id: string) {
   const { data } = await api.get<UsuarioResponse>(`/usuarios/${id}`);
   
-  // 🔥 CORREÇÃO: Buscar informações do avatar separadamente
-  try {
-    const avatarResponse = await api.get(`/usuarios/${id}/avatar`);
-    if (avatarResponse.data?.avatarUrl) {
-      // 🔥 CORREÇÃO CRÍTICA: Converter URL do frontend para backend
-      let avatarUrl = avatarResponse.data.avatarUrl;
-      
-      // Se a URL aponta para o frontend, converter para API
-      if (avatarUrl.includes('processosniper.com.br/uploads/')) {
-        avatarUrl = avatarUrl.replace('processosniper.com.br/', 'api.processosniper.com.br/');
-      }
-      
-      data.avatarUrl = avatarUrl;
-    }
-  } catch (error) {
-    console.log('Usuário sem avatar ou erro ao buscar avatar específico');
-    // Se der erro, tenta usar a URL do usuário normal
-    if (data.avatarUrl) {
-      // 🔥 CORREÇÃO: Aplicar mesma conversão se necessário
-      if (data.avatarUrl.includes('processosniper.com.br/uploads/')) {
-        data.avatarUrl = data.avatarUrl.replace('processosniper.com.br/', 'api.processosniper.com.br/');
-      }
-    }
+  // Se já tem avatarUrl, resolver normalmente
+  if (data.avatarUrl) {
+    data.avatarUrl = resolveImageUrl(data.avatarUrl);
   }
   
   return data;
